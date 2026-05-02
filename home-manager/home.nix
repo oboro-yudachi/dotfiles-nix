@@ -6,10 +6,13 @@
 
   home.stateVersion = "25.11";
 
-  home.packages = [
+  home.packages = with pkgs; [
+    nixfmt
+    git
   ];
 
   home.file = {
+    ".gitconfig".source = ./git/.gitconfig;
   };
 
   home.sessionVariables = {
