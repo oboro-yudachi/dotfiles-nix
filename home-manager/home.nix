@@ -9,6 +9,10 @@
   home.packages = with pkgs; [
     nixfmt
     git
+    fd
+    ripgrep
+    gh
+    shellcheck
   ];
 
   home.file = {
