@@ -15,10 +15,10 @@
 
   outputs =
     {
+      self,
       nixpkgs,
       home-manager,
       nix-darwin,
-      ...
     }:
     let
       system = "aarch64-darwin";
@@ -32,6 +32,8 @@
 
       };
       darwinConfigurations."shounoMacBook-Air" = nix-darwin.lib.darwinSystem {
+        specialArgs = { inherit self; };
+
         modules = [ ./nix-darwin/configuration.nix ];
       };
     };
