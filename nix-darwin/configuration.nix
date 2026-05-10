@@ -7,6 +7,7 @@
 
   imports = [
     ./home_manager.nix
+    ./homebrew.nix
   ];
 
   nixpkgs.hostPlatform = "aarch64-darwin";
@@ -16,5 +17,14 @@
 
   security.pam.services.sudo_local.touchIdAuth = true;
 
+  environment.systemPath = [
+    "/opt/homebrew/bin"
+    "/opt/homebrew/sbin"
+  ];
+
   programs.zsh.enable = true;
+
+  system.activationScripts.postActivation.text = ''
+    sudo -u taguchishoh ln -sf /opt/homebrew/opt/emacs-plus@30/Emacs.app /Users/taguchishoh/Applications/Emacs.app
+  '';
 }

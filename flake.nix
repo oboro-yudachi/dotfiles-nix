@@ -11,6 +11,7 @@
       url = "github:nix-darwin/nix-darwin";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    nix-homebrew.url = "github:zhaofengli/nix-homebrew";
   };
 
   outputs =
@@ -19,14 +20,18 @@
       nixpkgs,
       home-manager,
       nix-darwin,
+      nix-homebrew,
     }:
     {
       darwinConfigurations."shounoMacBook-Air" = nix-darwin.lib.darwinSystem {
-        specialArgs = { inherit self; };
+        specialArgs = {
+          inherit self nix-homebrew;
+        };
 
         modules = [
           ./nix-darwin/configuration.nix
           home-manager.darwinModules.home-manager
+          nix-homebrew.darwinModules.nix-homebrew
         ];
       };
     };
