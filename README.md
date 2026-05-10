@@ -33,8 +33,8 @@ macOS (Apple Silicon) の環境を Nix で宣言的に管理するための dotf
 
 ## 新しいマシンでのセットアップ手順
 
-> **前提**: Apple Silicon Mac (aarch64-darwin)、ユーザー名 `taguchishoh`
-> 新しいマシンのホスト名を取得し、`flake.nix` の `darwinConfigurations` のキーに反映してからセットアップを行うことを前提とします。
+> **前提**: Apple Silicon Mac (aarch64-darwin)
+> マシン名・ユーザー名はマシンごとに異なります。セットアップ前にリポジトリ内の該当箇所を実際の値に書き換えてコミットしてください（手順 3 参照）。
 
 ### 1. Xcode Command Line Tools のインストール
 
@@ -56,17 +56,35 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
 . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 ```
 
-### 3. リポジトリのクローン
+### 3. リポジトリのクローンとマシン情報の反映
 
 ```sh
 git clone https://github.com/oboro-yudachi/dotfiles-nix.git ~/dotfiles-nix
 cd ~/dotfiles-nix
 ```
 
-### 4. nix-darwin の初回適用
+マシン名とユーザー名を実際の値に書き換えます。
+
+| ファイル | 書き換え箇所 |
+|---|---|
+| `flake.nix` | `darwinConfigurations` のキー（マシン名） |
+| `nix-darwin/configuration.nix` | `users.users` のキーとホームパス（ユーザー名） |
+| `nix-darwin/homebrew.nix` | `nix-homebrew.user` / `homebrew.user`（ユーザー名） |
+| `nix-darwin/home_manager.nix` | `home-manager.users` のキー（ユーザー名） |
+| `home-manager/home.nix` | `home.username` / `home.homeDirectory`（ユーザー名） |
+
+書き換え後、コミットしてリポジトリに反映します。
 
 ```sh
-nix run nix-darwin -- switch --flake .#shounoMacBook-Air
+git add -A && git commit -m "update: マシン名・ユーザー名を反映"
+```
+
+### 4. nix-darwin の初回適用
+
+`<machine-name>` には手順 3 で設定したマシン名を指定します。
+
+```sh
+nix run nix-darwin -- switch --flake .#<machine-name>
 ```
 
 初回実行時は nix-darwin 自体のセットアップも行われます。完了後は `darwin-rebuild` コマンドが使用可能になります。
@@ -76,7 +94,7 @@ nix run nix-darwin -- switch --flake .#shounoMacBook-Air
 設定ファイルを編集した後は以下のコマンドで反映します。
 
 ```sh
-darwin-rebuild switch --flake ~/dotfiles-nix#shounoMacBook-Air
+darwin-rebuild switch --flake ~/dotfiles-nix#<machine-name>
 ```
 
 ### 6. 動作確認
