@@ -3,6 +3,12 @@
   ...
 }:
 {
+  users.users."taguchishoh".home = "/Users/taguchishoh";
+
+  imports = [
+    ./home_manager.nix
+  ];
+
   nixpkgs.hostPlatform = "aarch64-darwin";
   system.stateVersion = 6;
   nix.enable = false;
