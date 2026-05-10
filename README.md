@@ -23,6 +23,7 @@ macOS (Apple Silicon) の環境を Nix で宣言的に管理するための dotf
 
 - macOS 向け独自パッチを含む特殊な tap（例: `emacs-plus`）
 - nixpkgs の当該パッケージが Linux 専用で macOS (aarch64-darwin) をサポートしていないもの（例: `libvterm`）
+- その他 nixpkgs にまだ存在しないパッケージ
 
 ### Flake による入力の固定
 
@@ -33,6 +34,7 @@ macOS (Apple Silicon) の環境を Nix で宣言的に管理するための dotf
 ## 新しいマシンでのセットアップ手順
 
 > **前提**: Apple Silicon Mac (aarch64-darwin)、ユーザー名 `taguchishoh`
+> 新しいマシンのホスト名を取得し、`flake.nix` の `darwinConfigurations` のキーに反映してからセットアップを行うことを前提とします。
 
 ### 1. Xcode Command Line Tools のインストール
 
@@ -42,7 +44,7 @@ xcode-select --install
 
 ### 2. Nix のインストール
 
-[Determinate Systems の Nix インストーラー](https://determinate.systems/posts/determinate-nix-installer) を使用します（`/etc/zshrc` などの既存ファイルへの対応が公式インストーラーより堅牢です）。
+[nix-installer](https://github.com/DeterminateSystems/nix-installer)（Determinate Systems 製）を使用します。
 
 ```sh
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
