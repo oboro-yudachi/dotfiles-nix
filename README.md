@@ -63,7 +63,14 @@ git clone https://github.com/oboro-yudachi/dotfiles-nix.git ~/dotfiles-nix
 cd ~/dotfiles-nix
 ```
 
-マシン名とユーザー名を実際の値に書き換えます。
+マシン名とユーザー名を以下のコマンドで確認します。
+
+```sh
+scutil --get LocalHostName  # マシン名
+whoami                      # ユーザー名
+```
+
+確認した値を実際の値に書き換えます。
 
 | ファイル | 書き換え箇所 |
 |---|---|
@@ -91,13 +98,37 @@ nix run nix-darwin -- switch --flake .#<machine-name>
 
 ### 5. 以降の設定変更の適用
 
-設定ファイルを編集した後は以下のコマンドで反映します。
+このコマンドは **設定ファイルの変更を適用する**ためのものです。`flake.lock` に固定されたバージョンのまま環境を更新します。パッケージ自体のバージョンは変わりません。
 
 ```sh
 darwin-rebuild switch --flake ~/dotfiles-nix#<machine-name>
 ```
 
-### 6. 動作確認
+### 6. パッケージのバージョン更新
+
+`nix flake update` は `flake.lock` を更新し、各入力（nixpkgs・home-manager・nix-darwin など）を最新バージョンに引き上げます。更新後は手順 5 のコマンドで環境に反映します。
+
+```sh
+# nixpkgs のみ更新（パッケージの最新版を取得）
+nix flake update nixpkgs
+
+# home-manager のみ更新
+nix flake update home-manager
+
+# nix-darwin のみ更新
+nix flake update nix-darwin
+
+# すべての入力を一括更新
+nix flake update
+```
+
+更新後は必ず手順 5 のコマンドで環境に反映します。
+
+```sh
+darwin-rebuild switch --flake ~/dotfiles-nix#<machine-name>
+```
+
+### 7. 動作確認
 
 ```sh
 # Nix で管理されているパッケージの確認
