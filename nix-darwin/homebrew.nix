@@ -27,6 +27,7 @@
       "jpeg"
       # nixpkgs の libvterm は Linux 専用（meta.platforms に aarch64-darwin が含まれない）
       "libvterm"
+      # markdown viewer系
       "markdown"
       "mo"
     ];
