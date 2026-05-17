@@ -121,7 +121,8 @@ nix flake update
 更新後は必ず手順 5 のコマンドで環境に反映します。
 
 ```sh
-darwin-rebuild switch --flake ~/dotfiles-nix#<machine-name>
+# flake.nixがあるディレクトリで実行
+sudo darwin-rebuild switch --flake .
 ```
 
 ### 7. 動作確認
