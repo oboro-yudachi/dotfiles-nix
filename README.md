@@ -44,11 +44,7 @@ xcode-select --install
 
 ### 2. Nix のインストール
 
-[nix-installer](https://github.com/DeterminateSystems/nix-installer)（Determinate Systems 製）を使用します。
-
-```sh
-curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
-```
+[nix-installer](https://github.com/DeterminateSystems/nix-installer)（Determinate Systems 製）を使用します。インストールコマンドは公式リポジトリを参照してください。
 
 インストール後、シェルを再起動するか以下を実行します。
 
