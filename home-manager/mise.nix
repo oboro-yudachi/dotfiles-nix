@@ -16,9 +16,11 @@
       tools = {
         bun = "1.3.11";
         node = "24.14.1";
+        npm = "11.15.0";
         ruby = "4.0.0";
         python = "3.14.4";
         mysql = "8.0";
+        "npm:ccusage" = "latest";
       };
     };
   };
