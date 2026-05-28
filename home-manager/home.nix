@@ -32,5 +32,9 @@
   home.sessionVariables = {
   };
 
+  xdg.configFile = {
+    "ghostty/config".source = ./ghostty/config;
+  };
+
   programs.home-manager.enable = true;
 }
