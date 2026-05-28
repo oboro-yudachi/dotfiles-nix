@@ -42,8 +42,8 @@
 
       function use-emacs-plus() {
         export EMACS="$EMACS_PLUS_BIN"
-        rm /Applications/Emacs.app
-        ln -s "$EMACS_PLUS_APP" /Applications/Emacs.app
+        { [ -e /Applications/Emacs.app ] || [ -L /Applications/Emacs.app ]; } && rm /Applications/Emacs.app
+        ln -sf "$EMACS_PLUS_APP" /Applications/Emacs.app
         echo "Switched to emacs-plus: $($EMACS --version | head -1)"
         echo "Running doom sync..."
         doom sync
