@@ -36,7 +36,7 @@
 
   xdg.configFile = {
     "ghostty/config".source = ./ghostty/config;
-  }
+  };
 
   programs.zsh = {
     enable = true;
