@@ -26,6 +26,9 @@
 
   home.file = {
     ".gitconfig".source = ./git/.gitconfig;
+    ".doom.d/init.el".source     = ./doom.d/init.el;
+    ".doom.d/packages.el".source = ./doom.d/packages.el;
+    ".doom.d/config.el".source   = ./doom.d/config.el;
   };
 
   home.sessionVariables = {
