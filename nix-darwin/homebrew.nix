@@ -20,7 +20,6 @@
     ];
 
     brews = [
-      "agda"
       # macOS 向け独自パッチ（ネイティブフルスクリーン等）が含まれる特殊 tap のため nixpkgs に移行不可
       "d12frosted/emacs-plus/emacs-plus@30"
       # 依存関係には現れないが Doom Emacs の起動に必要
@@ -29,7 +28,6 @@
       "libvterm"
       # markdown viewer系
       "markdown"
-      "mo"
     ];
 
     casks = [

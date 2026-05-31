@@ -22,6 +22,7 @@
     python314
     bun
     nodejs_24
+    agda
   ];
 
   # ccusage は nixpkgs 未対応のため npm グローバルインストールで管理
