@@ -1,10 +1,6 @@
 { config, pkgs, lib, ... }:
 
 {
-  imports = [
-    ./mise.nix
-  ];
-
   home.username = "taguchishoh";
   home.homeDirectory = "/Users/taguchishoh";
 
@@ -22,7 +18,19 @@
     zstd
     libtool
     libyaml
+    ruby_4_0
+    python314
+    bun
+    nodejs_24
   ];
+
+  # ccusage は nixpkgs 未対応のため npm グローバルインストールで管理
+  # ~/.local/bin は zsh initContent で PATH に追加済み
+  home.activation.installCcusage = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    if [ ! -f "$HOME/.local/bin/ccusage" ]; then
+      ${pkgs.nodejs_24}/bin/npm install -g ccusage --prefix "$HOME/.local"
+    fi
+  '';
 
   home.file = {
     ".gitconfig".source = ./git/.gitconfig;
@@ -56,6 +64,12 @@
         doom sync
       }
     '';
+  };
+
+  programs.direnv = {
+    enable = true;
+    enableZshIntegration = true;
+    nix-direnv.enable = true;
   };
 
   programs.home-manager.enable = true;
