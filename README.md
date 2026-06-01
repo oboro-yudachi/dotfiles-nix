@@ -15,7 +15,6 @@ macOS (Apple Silicon) の環境を Nix で宣言的に管理するための dotf
 | **nix-darwin** | macOS システム設定の宣言的管理（パス、PAM、シェルなど） |
 | **home-manager** | ユーザー環境の管理（パッケージ、dotfiles、セッション変数） |
 | **nix-homebrew** | Homebrew 自体を Nix で宣言的に管理し、tap / brew / cask を一元管理 |
-| **mise** | Node.js / Ruby / Python などランタイムのバージョン管理 |
 
 ### nixpkgs を優先し、Homebrew は最小限に
 
@@ -28,6 +27,54 @@ macOS (Apple Silicon) の環境を Nix で宣言的に管理するための dotf
 ### Flake による入力の固定
 
 `flake.lock` によって全ての依存バージョンを固定します。意図しないアップデートによる環境の差異を防ぎます。
+
+---
+
+## 管理しているもの
+
+### nixpkgs パッケージ（home-manager）
+
+| カテゴリ | パッケージ |
+|---|---|
+| Nix | nixfmt |
+| ビルド・システム | cmake, coreutils, libtool, libyaml, shellcheck, zstd |
+| 検索 | fd, ripgrep |
+| 言語 | agda, bun, nodejs_24, python314, ruby_4_0 |
+
+### Homebrew（nix-homebrew 経由）
+
+| 種類 | パッケージ | 理由 |
+|---|---|---|
+| brew | emacs-plus@30 | macOS 向け独自パッチ（ネイティブフルスクリーン等）を含む特殊 tap |
+| brew | jpeg | Doom Emacs の起動に必要 |
+| brew | libvterm | nixpkgs 版が Linux 専用（aarch64-darwin 未対応） |
+| brew | markdown | markdown ビューア |
+| cask | font-juliamono, font-rambla | フォント |
+
+### プログラム（home-manager programs）
+
+| プログラム | 備考 |
+|---|---|
+| git | インストールのみ。設定は `home.file` の `.gitconfig` で管理 |
+| gh | GitHub CLI |
+| direnv | nix-direnv 有効、zsh 統合あり |
+| yazi | zsh 統合あり |
+| zsh | 有効化のみ。独自設定なし |
+
+### dotfiles（home.file / xdg.configFile）
+
+| ファイル | 管理方法 |
+|---|---|
+| `~/.gitconfig` | `home.file` |
+| `~/.doom.d/init.el` | `home.file` |
+| `~/.doom.d/packages.el` | `home.file` |
+| `~/.doom.d/config.el` | `home.file` |
+| `~/.config/ghostty/config` | `xdg.configFile` |
+
+### その他
+
+- **ccusage**: nixpkgs 未対応のため、`home.activation` で npm グローバルインストール（`~/.local/bin`）
+- **emacs-plus の symlink**: `nix-darwin` の `system.activationScripts` で `~/Applications/Emacs.app` を自動作成
 
 ---
 
@@ -130,9 +177,6 @@ sudo darwin-rebuild switch --flake .
 ```sh
 # Nix で管理されているパッケージの確認
 nix profile list
-
-# mise で管理されているランタイムの確認
-mise list
 
 # Homebrew で管理されているパッケージの確認
 brew list
