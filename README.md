@@ -141,6 +141,8 @@ nix run nix-darwin -- switch --flake .#<machine-name>
 
 ### 5. 以降の設定変更の適用
 
+このコマンドは **設定ファイルの変更を適用する**ためのものです。`flake.lock` に固定されたバージョンのまま環境を更新します。パッケージ自体のバージョンは変わりません。
+
 ```sh
 darwin-rebuild switch --flake ~/dotfiles-nix#<machine-name>
 ```
@@ -150,7 +152,7 @@ darwin-rebuild switch --flake ~/dotfiles-nix#<machine-name>
 `nix flake update` は `flake.lock` を更新し、各入力（nixpkgs・home-manager・nix-darwin など）を最新バージョンに引き上げます。更新後は手順 5 のコマンドで環境に反映します。
 
 ```sh
-# nixpkgs のみ更新
+# nixpkgs のみ更新（パッケージの最新版を取得）
 nix flake update nixpkgs
 
 # home-manager のみ更新
@@ -163,7 +165,12 @@ nix flake update nix-darwin
 nix flake update
 ```
 
-更新後は手順 5 のコマンドで環境に反映します。
+更新後は必ず手順 5 のコマンドで環境に反映します。
+
+```sh
+# flake.nixがあるディレクトリで実行
+sudo darwin-rebuild switch --flake .
+```
 
 ### 7. 動作確認
 

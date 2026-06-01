@@ -1,54 +1,77 @@
 { config, pkgs, lib, ... }:
 
 {
-  home.username = "taguchishoh";
-  home.homeDirectory = "/Users/taguchishoh";
+  home = {
+    username = "taguchishoh";
+    homeDirectory = "/Users/taguchishoh";
+    stateVersion = "25.11";
 
-  home.stateVersion = "25.11";
+    packages = with pkgs; [
+      # Nix
+      nixfmt
 
-  home.packages = with pkgs; [
-    nixfmt
-    git
-    fd
-    ripgrep
-    gh
-    shellcheck
-    cmake
-    coreutils
-    zstd
-    libtool
-    libyaml
-    rustup
-  ];
+      # Build / system libs
+      cmake
+      coreutils
+      libtool
+      libyaml
+      shellcheck
+      zstd
 
-  programs.mise = {
-    enable = true;
-    enableZshIntegration = true;
-    globalConfig = {
-      settings = {
-        idiomatic_version_file_enable_tools = [ "node" "ruby" ];
-      };
-      tools = {
-        bun = "1.3.11";
-        node = "24.14.1";
-        ruby = "4.0.0";
-        python = "3.14.4";
-        mysql = "8.0";
-      };
+      # Search
+      fd
+      ripgrep
+
+      # Languages
+      agda
+      bun
+      nodejs_24
+      python314
+      ruby_4_0
+    ];
+
+    # ccusage は nixpkgs 未対応のため npm グローバルインストールで管理
+    activation.installCcusage = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      if [ ! -f "$HOME/.local/bin/ccusage" ]; then
+        ${pkgs.nodejs_24}/bin/npm install -g ccusage --prefix "$HOME/.local"
+      fi
+    '';
+
+    file = {
+      ".gitconfig".source          = ./git/.gitconfig;
+      ".doom.d/init.el".source     = ./doom.d/init.el;
+      ".doom.d/packages.el".source = ./doom.d/packages.el;
+      ".doom.d/config.el".source   = ./doom.d/config.el;
     };
+
+    sessionPath = [
+      "$HOME/.local/bin"
+      "$HOME/.emacs.d/bin"
+    ];
   };
 
-  home.file = {
-    ".gitconfig".source = ./git/.gitconfig;
+  xdg.configFile = {
+    "ghostty/config".source = ./ghostty/config;
   };
 
-  home.sessionVariables = {
+  programs = {
+    # git インストールのみ; 設定は home.file の .gitconfig で管理
+    git.enable = true;
+    gh.enable = true;
+
+    direnv = {
+      enable = true;
+      enableZshIntegration = true;
+      nix-direnv.enable = true;
+    };
+
+    yazi = {
+      enable = true;
+      enableZshIntegration = true;
+    };
+
+    zsh.enable = true;
+
+    home-manager.enable = true;
   };
-
-  programs.home-manager.enable = true;
-
-  home.activation.miseInstall = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    ${pkgs.mise}/bin/mise install --quiet
-    ${pkgs.mise}/bin/mise prune --yes
-  '';
 }
