@@ -5,6 +5,8 @@
 
 ## 1. Xcode Command Line Tools のインストール
 
+macOS にはデフォルトで C コンパイラが存在しないため、Nix のインストールおよびパッケージのビルドに必要な `clang` / `make` / `git` を事前に用意します。
+
 ```sh
 xcode-select --install
 ```
