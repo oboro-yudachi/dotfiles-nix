@@ -64,3 +64,31 @@ nix run nix-darwin -- switch --flake .#<machine-name>
 ```sh
 darwin-rebuild switch --flake ~/dotfiles-nix#<machine-name>
 ```
+
+## 6. パッケージのバージョン更新
+
+```sh
+# nixpkgs のみ更新
+nix flake update nixpkgs
+
+# home-manager のみ更新
+nix flake update home-manager
+
+# nix-darwin のみ更新
+nix flake update nix-darwin
+
+# すべての入力を一括更新
+nix flake update
+```
+
+更新後は手順 5 のコマンドで環境に反映します。
+
+## 7. 動作確認
+
+```sh
+# Nix で管理されているパッケージの確認
+nix profile list
+
+# Homebrew で管理されているパッケージの確認
+brew list
+```
