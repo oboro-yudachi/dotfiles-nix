@@ -33,7 +33,7 @@
 * Org-mode
 ** ディレクトリ
 #+begin_src emacs-lisp
-(setq org-directory "~/dev/org/")
+(setq org-directory "~/repo/05_org/")
 (setq org-roam-directory org-directory)
 #+end_src
 
@@ -68,7 +68,7 @@ org-capture-templates のテンプレート本文（第5要素）は文字列 / 
                    (concat (format-time-string "%Y%m%d-")
                            (org-capture-get :my-title)
                            ".org")
-                   "~/dev/org/")))
+                   org-directory)))
           ,(concat ":PROPERTIES:\n"
                   ":ID: %(org-id-new)\n"
                   ":END:\n"
