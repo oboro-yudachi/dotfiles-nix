@@ -21,10 +21,14 @@
       # CLI tools
       gh
 
-      # Doom Emacs org モジュール（+crypt +gnuplot +pandoc）の外部依存
+      # Doom Emacs org モジュール（+crypt +dragndrop +gnuplot +pandoc +roam）の外部依存
       gnupg
       gnuplot
+      # org-roamのグラフ可視化（dot）
+      graphviz
       pandoc
+      # org-download-clipboard（クリップボード画像の貼り付け）
+      pngpaste
 
       # Search
       fd
