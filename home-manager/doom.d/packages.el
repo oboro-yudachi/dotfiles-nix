@@ -9,6 +9,8 @@
 (package! difftastic
   :recipe (:host github :repo "pkryger/difftastic.el"))
 
+(package! org-roam-ui)
+
 (package! impatient-mode)
 ;; MELPAの標準レシピだと別物（emacs-web-server）を指してしまい
 ;; simple-httpd.el自体がビルドされない事象が起きたため、本家repoを明示指定する
