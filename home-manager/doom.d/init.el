@@ -90,7 +90,7 @@
        (magit +forge)             ; a git porcelain for Emacs
        ;;make              ; run make tasks from Emacs
        ;;pass              ; password manager for nerds
-       ;;pdf               ; pdf enhancements
+       pdf                 ; pdf enhancements
        ;;terraform         ; infrastructure as code
        ;;tmux              ; an API for interacting with tmux
        tree-sitter        ; syntax and parsing, sitting in a tree...
@@ -144,7 +144,7 @@
        nix               ; I hereby declare "nix geht mehr!"
        ;;ocaml             ; an objective camel
        ;;odin              ; C, minus its footguns
-       org               ; organize your plain life in plain text
+       (org +crypt +dragndrop +gnuplot +journal +jupyter +noter +pandoc +present +pretty +roam)  ; organize your plain life in plain text
        (php +lsp)        ; perl's insecure younger brother
        ;;plantuml          ; diagrams for confusing people more
        ;;graphviz          ; diagrams for confusing yourself even more
@@ -181,5 +181,5 @@
        ;;(rss +org)        ; emacs as an RSS reader
 
        :config
-       ;;literate
+       literate
        (default +bindings +smartparens))

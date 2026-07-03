@@ -21,6 +21,11 @@
       # CLI tools
       gh
 
+      # Doom Emacs org モジュール（+crypt +gnuplot +pandoc）の外部依存
+      gnupg
+      gnuplot
+      pandoc
+
       # Search
       fd
       ripgrep
@@ -29,7 +34,8 @@
       agda
       bun
       nodejs_24
-      python314
+      # +jupyter（emacs-jupyter）用にjupyter/ipykernel込みで入れる
+      (python314.withPackages (ps: with ps; [ jupyter ipykernel ]))
       ruby_4_0
       uv
     ];
@@ -45,7 +51,10 @@
       ".gitconfig".source          = ./git/.gitconfig;
       ".doom.d/init.el".source     = ./doom.d/init.el;
       ".doom.d/packages.el".source = ./doom.d/packages.el;
-      ".doom.d/config.el".source   = ./doom.d/config.el;
+      # config.elはdoom sync（literateモジュール）がconfig.orgからtangleして生成する。
+      # Nix管理の読み取り専用シンボリックリンクにするとtangleが書き込めず失敗するため、
+      # ソースのconfig.orgのみを管理する
+      ".doom.d/config.org".source  = ./doom.d/config.org;
     };
 
     sessionPath = [

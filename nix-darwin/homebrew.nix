@@ -28,9 +28,13 @@
       "libvterm"
       # markdown viewer系
       "markdown"
+      # pdf-tools（epdfinfo）のビルドに必要。emacs-plus自体がHomebrew製なので
+      # ビルドツールチェーンをHomebrew側で揃える
+      "poppler"
     ];
 
     casks = [
+      "font-hack-nerd-font"
       "font-juliamono"
       "font-rambla"
     ];

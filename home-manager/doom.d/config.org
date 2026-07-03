@@ -1,0 +1,457 @@
+#+TITLE: Doom Emacs Config
+#+LANGUAGE: ja
+#+PROPERTY: header-args:emacs-lisp :results silent
+
+先頭の行はファイルの1行目に来る必要がある（lexical-binding宣言のため）。
+#+begin_src emacs-lisp
+;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
+#+end_src
+
+* 基本設定
+** クリップボード
+システムクリップボードと共有
+#+begin_src emacs-lisp
+(setq select-enable-clipboard t)
+(setq evil-want-clipboard t)
+#+end_src
+
+** テーマ・フォント
+#+begin_src emacs-lisp
+(setq doom-theme 'doom-one)
+(setq doom-font (font-spec :family "Hack Nerd Font Mono" :size 16))
+(setq doom-variable-pitch-font (font-spec :family "Hack Nerd Font Mono" :size 16))
+#+end_src
+
+** 表示・ウィンドウ
+#+begin_src emacs-lisp
+(setq display-line-numbers-type nil)
+(add-to-list 'default-frame-alist '(fullscreen . maximized))
+(which-function-mode 1)
+(setq-default tab-width 2)
+#+end_src
+
+* Org-mode
+** ディレクトリ
+#+begin_src emacs-lisp
+(setq org-directory "~/dev/org/")
+(setq org-roam-directory org-directory)
+#+end_src
+
+** org-roam-node-findにタグを表示する
+#+begin_src emacs-lisp
+(setq org-roam-node-display-template
+      (concat "{title:*} "
+              (propertize "${tags:25}" 'face 'org-tag)))
+#+end_src
+
+** org-roamのdbを自動更新する
+#+begin_src emacs-lisp
+(org-roam-db-autosync-enable)
+#+end_src
+
+** captureテンプレート
+org-capture-templates のテンプレート本文（第5要素）は文字列 / (file ...) / (function ...) のいずれかしか受け付けない（org-capture-get-template参照）。
+以前は本文を(concat ...) の生リストのまま登録していたため、いずれにもマッチせずorg-capture-get-templateが
+フォールバックの "* Invalid capture template" を返してしまっていた。
+バッククォート + アンクォートで concat を事前に評価し、プレーンな文字列にしてから登録することで解消する。
+
+ファイル名生成時に read-string で聞いたタイトルを org-capture-put/get で capture の property list に
+一時保存しておき、テンプレート本文側で %(org-capture-get :my-title) として読み出すことで #+TITLE: にも
+流用する（同じタイトルを二度入力しなくて済む）。カーソル位置(%?)は本文の末尾に移し、そのままメモを書き始められるようにした。
+#+begin_src emacs-lisp
+(after! org
+  (add-to-list 'org-capture-templates
+        `("m" "Work memo" plain
+          (file (lambda ()
+                  (org-capture-put :my-title (read-string "Title: "))
+                  (expand-file-name
+                   (concat (format-time-string "%Y%m%d-")
+                           (org-capture-get :my-title)
+                           ".org")
+                   "~/dev/org/")))
+          ,(concat ":PROPERTIES:\n"
+                  ":ID: %(org-id-new)\n"
+                  ":END:\n"
+                  "#+TITLE: %(org-capture-get :my-title)\n"
+                  "#+OPTIONS: broken-links:t toc:nil \\n:t ^:nil num:nil\n"
+                  "#+DATE: %<%Y-%m-%d>\n"
+                  "#+LANGUAGE: ja\n"
+                  "\n%?")
+          :jump-to-captured t)))
+#+end_src
+
+** org-roamノード作成時に保存先ディレクトリを選択する
+org-roam-directory を org-directory 全体に広げたことで、ノードをどのサブディレクトリに
+置くか毎回手動で mkdir/mv する必要が出てきた。org-roam-node-find から新規ノードを
+作成する際に、既存のサブディレクトリを補完候補として選ぶ（TABで既存の中から選択、
+自由入力で新規ディレクトリを作成、空欄でルート直下）ようにして手間を省く。
+#+begin_src emacs-lisp
+(defun my/org-roam--select-directory ()
+  "org-roam-directory 配下の既存サブディレクトリを選択、または新規ディレクトリ名を入力する。
+空文字のまま確定するとルート直下に作成する。"
+  (let* ((subdirs (thread-last
+                     (directory-files-recursively org-roam-directory "" t)
+                     (seq-filter #'file-directory-p)
+                     (mapcar (lambda (d) (file-relative-name d org-roam-directory)))
+                     (cons "")
+                     (delete-dups)))
+         (choice (completing-read "Directory (空欄でルート直下): " subdirs nil nil)))
+    (if (string-empty-p choice)
+        org-roam-directory
+      (let ((dir (expand-file-name choice org-roam-directory)))
+        (make-directory dir t)
+        dir))))
+
+(after! org-roam
+  (setq org-roam-capture-templates
+        '(("d" "default" plain "%?"
+           :target (file+head "%(my/org-roam--select-directory)/%<%Y%m%d>-${slug}.org"
+                               ":PROPERTIES:\n:ID:       %(org-id-new)\n:END:\n#+TITLE: ${title}\n#+OPTIONS: broken-links:t toc:nil \\n:t ^:nil num:nil\n#+DATE: %<%Y-%m-%d>\n#+LANGUAGE: ja\n")
+           :unnarrowed t))))
+#+end_src
+
+** org-roam backlinksバッファへフォーカス移動
+org-roam-buffer は Doom の popup 扱いになっており（set-popup-rules!）、通常の
+other-window（SPC w w / C-x o）では対象外になるため素通りしてしまう。~C-x p~
+（+popup/other）でも移動できるが、treemacs-select-window のように「無ければ
+開いて選択、あれば選択するだけ」の専用関数を作って割り当てる。
+#+begin_src emacs-lisp
+(defun my/org-roam-buffer-select ()
+  "org-roam backlinksバッファを（無ければ開いてから）選択する。"
+  (interactive)
+  (unless (get-buffer-window org-roam-buffer)
+    (org-roam-buffer-toggle))
+  (when-let ((win (get-buffer-window org-roam-buffer)))
+    (select-window win)))
+
+(map! :leader
+      :desc "Select org-roam buffer"
+      "n r w" #'my/org-roam-buffer-select)
+#+end_src
+
+** 保存時に自動export（AUTO_EXPORTキーワード）
+個別のorgファイル側で ~#+AUTO_EXPORT: md~ のように書いておくと、保存時に
+自動でそのバックエンドへexportする汎用フック。スペース区切りで複数指定可能
+（例: ~#+AUTO_EXPORT: md html~）。キーワードを書かないファイルには一切影響しない。
+
+~"md"~ はorg組み込みの ~org-md-export-to-markdown~ ではなく、pandoc経由の
+GFM（GitHub Flavored Markdown）exportにしている。組み込みの方はテーブルを
+markdown記法に変換できず生のHTMLタグをそのまま埋め込んでしまうため
+（ox-mdの既知の制限）。pandocのgfm exportは拡張子も ~.md~ のまま
+（~org-pandoc-output-format-extensions~ で ~gfm~ は ~md~ に対応）で、
+テーブルもきちんとpipe記法に変換される。
+#+begin_src emacs-lisp
+(defvar my/org-auto-export-backends
+  '(("md"      . org-pandoc-export-to-gfm)
+    ("html"    . org-html-export-to-html)
+    ("gfm"     . org-pandoc-export-to-gfm)
+    ("docx"    . org-pandoc-export-to-docx))
+  "AUTO_EXPORTキーワードの値と対応するexport関数の対応表。
+新しいバックエンドを増やしたい時はここに追加する。")
+
+(defun my/org-auto-export-if-requested ()
+  "バッファ先頭に #+AUTO_EXPORT: があれば、保存時に自動でexportする。"
+  (when (derived-mode-p 'org-mode)
+    (when-let* ((keyword (cadr (assoc "AUTO_EXPORT"
+                                       (org-collect-keywords '("AUTO_EXPORT")))))
+                (backends (split-string keyword)))
+      (dolist (name backends)
+        (if-let ((fn (cdr (assoc name my/org-auto-export-backends))))
+            (progn
+              (funcall fn)
+              (message "AUTO_EXPORT: %s へexportしました" name))
+          (message "AUTO_EXPORT: 未知のバックエンド %s" name))))))
+
+(add-hook 'after-save-hook #'my/org-auto-export-if-requested)
+#+end_src
+
+** HTMLホットリロードプレビュー（impatient-mode）
+現在のorgバッファをexportしたHTMLを、実ブラウザ（eww等ではなくChrome/Safari）で
+ホットリロードしながらプレビューする。~simple-httpd~ でローカルHTTPサーバーを
+立て、~impatient-mode~ がバッファの変更を検知してブラウザ側へpush通知する仕組み。
+#+begin_src emacs-lisp
+(use-package! impatient-mode
+  :commands (impatient-mode imp-visit-buffer imp-set-user-filter))
+
+(after! impatient-mode
+  ;; 編集のたびに毎回exportすると重いので、0.5秒の無操作を挟んでから更新する
+  (setq impatient-mode-delay 0.5))
+
+(defun my/imp-org-html-filter (buffer)
+  "orgバッファの内容をHTMLへexportしてimpatient-modeに渡すフィルタ。
+imp--send-stateからstandard-outputが出力先バッファにbindされた状態で呼ばれるため、
+princでそこに書き込む。"
+  (princ (with-current-buffer buffer
+           (org-export-as 'html nil nil nil))))
+
+(defun my/org-impatient-preview ()
+  "現在のorgバッファを、実ブラウザでホットリロードしながらプレビューする。"
+  (interactive)
+  (unless (derived-mode-p 'org-mode)
+    (user-error "org-modeバッファで実行してください"))
+  (imp-set-user-filter #'my/imp-org-html-filter)
+  (imp-visit-buffer))
+
+(map! :map org-mode-map
+      :localleader
+      :desc "Live HTML preview" "P" #'my/org-impatient-preview)
+#+end_src
+
+** file:リンクのエクスポート挙動
+file:リンクはエクスポート時にリンクではなく説明文（無ければパス）だけを出力する。
+ローカルの絶対パスはエクスポート先（Markdown/HTMLなど）では意味を持たないため。
+file以外のリンクタイプ（http, https, idなど）には影響しない。
+#+begin_src emacs-lisp
+(after! org
+  (org-link-set-parameters "file"
+    :export (lambda (link description _format _info)
+              (or description link))))
+#+end_src
+
+file:リンクに検索オプション（::33や::send_messageなど）が付いていると、
+org-html-linkなどが上のexport上書きより先に検索文字列の解決を試みてしまい、
+見つからない場合はorg-export-with-broken-linksによりエクスポートが中断される。
+壊れた内部リンク（見出し/IDが解決できないリンク）があった場合はエクスポートを中断する（デフォルト値を明示）。
+#+begin_src emacs-lisp
+(setq org-export-with-broken-links nil)
+#+end_src
+
+保留中の対応案（エクスポート直前にパースツリーからfile:リンクの:search-optionだけ取り除いて回避する）。
+今は使っていないので tangle しない。
+#+begin_src emacs-lisp :tangle no
+(defun my/org-strip-file-link-search-options (tree _backend _info)
+  (org-element-map tree 'link
+    (lambda (link)
+      (when (equal (org-element-property :type link) "file")
+        (org-element-put-property link :search-option nil))))
+  tree)
+(add-to-list 'org-export-filter-parse-tree-functions
+             #'my/org-strip-file-link-search-options)
+#+end_src
+
+** 箇条書き中のRETの挙動
+org-mode中に箇条書きをするときは、改行したら自動で空気読みを発動する
+#+begin_src emacs-lisp
+(with-eval-after-load 'org
+  (define-key org-mode-map (kbd "RET")
+              (lambda ()
+                (interactive)
+                (if (org-in-item-p)
+                    (org-insert-item)
+                  (org-return)))))
+#+end_src
+
+** リンクフォロー
+#+begin_src emacs-lisp
+(setq org-return-follows-link t)
+#+end_src
+
+** org-modernを無効化する（+pretty）
+見出しの折りたたみ記号（レベル3の ~⯈~ ~⯆~ = U+2BC8, U+2BC6）に続き、
+チェックボックス ~[ ]~ ~[X]~ の置き換えグリフ（☑ = U+2611、□ = U+25A1）も
+Hack Nerd Font Mono に無くて文字化けする。都度フォントに存在する文字を
+探して差し替えるのはキリがないので、org-modern-mode 自体を無効化する。
++pretty フラグの他の機能（org-appear, org-hide-emphasis-markers,
+org-pretty-entities）は文字化けと無関係なので残す。
+#+begin_src emacs-lisp
+(remove-hook 'org-mode-hook #'org-modern-mode)
+(remove-hook 'org-agenda-finalize-hook #'org-modern-agenda)
+#+end_src
+
+* IME
+insertから抜けたタイミングとminibuffer終了時にABCキーレイアウトへ切り替える
+#+begin_src emacs-lisp
+(defun my/im-select-abc ()
+  (when (executable-find "im-select")
+    (start-process "im-select" nil "im-select" "com.apple.keylayout.ABC")))
+
+(add-hook 'evil-insert-state-exit-hook #'my/im-select-abc)
+(add-hook 'minibuffer-exit-hook #'my/im-select-abc)
+#+end_src
+
+* LSP
+** imenuの並び順
+lsp-modeのimenuはデフォルトで種類(kind)→名前順にソートされ、ファイル内の出現順にならない。
+position優先にしてconsult-imenuの表示順をファイル内の出現順に揃える。
+#+begin_src emacs-lisp
+(after! lsp-mode
+  (setq lsp-imenu-sort-methods '(position)))
+#+end_src
+
+** Ruby / TS
+bundle exec経由でruby-lspを起動しない（GemfileにはrubyLSPは含まれていないため）。
+solargraphを無効化してruby-lspを使う（lsp-modeのデフォルトはsolargraph=ruby-ls）。
+#+begin_src emacs-lisp
+(after! lsp-mode
+  (setq lsp-ruby-lsp-use-bundler nil)
+  (setq lsp-disabled-clients (append lsp-disabled-clients '(ruby-ls rubocop-ls)))
+  (setq lsp-inlay-hint-enable t)
+  (setq lsp-javascript-format-enable nil)
+  (setq lsp-typescript-format-enable nil)
+  (add-hook 'lsp-mode-hook #'lsp-lens-mode))
+
+(add-hook 'ruby-mode-hook #'lsp)
+(add-hook 'tsx-ts-mode-hook #'lsp)
+(add-hook 'typescript-ts-mode-hook #'lsp)
+#+end_src
+
+** lsp-ui
+#+begin_src emacs-lisp
+(use-package lsp-ui)
+(after! lsp-mode
+  (setq lsp-signature-auto-activate nil)   ; スペース入力での自動表示を止める
+  (setq lsp-signature-render-documentation nil))  ; ドキュメント部分も非表示
+
+(after! lsp-ui
+  (setq lsp-ui-doc-enable nil))  ; hover ドキュメントも念のため無効化
+#+end_src
+
+** キーバインド
+#+begin_src emacs-lisp
+(map! :leader
+      :desc "Toggle LSP signature" "t s"
+      (cmd! (setq lsp-signature-auto-activate
+                  (not lsp-signature-auto-activate))))
+
+(map! :leader
+      :desc "Toggle LSP headerline breadcrumb"
+      "l b" #'lsp-headerline-breadcrumb-mode)
+
+(map! :leader
+      :desc "treemacs select window"
+      "l w" #'treemacs-select-window)
+#+end_src
+
+* Evil
+evilmi-matchitの設定（ruby-ts-modeを追加。ruby-modeはevilmi-init-pluginsが自動登録する）
+#+begin_src emacs-lisp
+(use-package! evil-matchit
+  :hook (after-init . global-evil-matchit-mode)
+  :config
+  (evilmi-load-plugin-rules '(ruby-ts-mode) '(simple ruby))
+  ;; ジャンプ後にキーワード上にカーソルを置く（デフォルトは行頭/行末になる）
+  (advice-add 'evilmi-jump-items :after
+              (lambda (&rest _)
+                (when (memq major-mode '(ruby-mode ruby-ts-mode))
+                  (let ((kw-re "\\_<\\(do\\|end\\|if\\|elsif\\|else\\|unless\\|while\\|until\\|for\\|def\\|class\\|module\\|begin\\|case\\|when\\|rescue\\|ensure\\)\\_>"))
+                    (back-to-indentation)
+                    (unless (looking-at kw-re)
+                      (when (re-search-forward kw-re (line-end-position) t)
+                        (goto-char (match-beginning 0)))))))))
+#+end_src
+
+* Treemacs
+幅を固定ロックしない（手で調整可能にする）。
+SPC w w (other-window) でtreemacsウィンドウにフォーカス移動できるようにする
+（treemacsはデフォルトでno-other-window=tを設定しサイクルから除外されるため上書きする）。
+#+begin_src emacs-lisp
+(after! treemacs
+  (setq treemacs-width-is-initially-locked nil
+        treemacs-width 50) ; デフォルト幅
+
+  (defun my/treemacs-set-width (width)
+    "Treemacs の幅を WIDTH（列数）に設定する。"
+    (interactive "nTreemacs width: ")
+    (setq treemacs-width width)
+    (when-let ((win (treemacs-get-local-window)))
+      (adjust-window-trailing-edge win (- width (window-total-width win)) t)))
+
+  (add-hook 'treemacs-mode-hook
+            (lambda ()
+              (set-window-parameter (selected-window) 'no-other-window nil))))
+#+end_src
+
+* 外部ツール連携
+** Cursor
+#+begin_src emacs-lisp
+(defun open-in-cursor ()
+  "Open the current file in Cursor."
+  (interactive)
+  (let ((filename (buffer-file-name)))
+    (if filename
+        (start-process "open-in-cursor" nil "open" "-a" "Cursor" filename)
+      (message "No file associated with this buffer."))))
+
+(map! :leader
+      :desc "Open in Cursor"
+      "o C" #'open-in-cursor)
+#+end_src
+
+** Claude Code IDE
+#+begin_src emacs-lisp
+(use-package! claude-code-ide
+  :config
+  (claude-code-ide-emacs-tools-setup)) ; Optionally enable Emacs MCP tools
+
+(map! :leader
+      :desc "Claude Code IDE Menu"
+      "c m" #'claude-code-ide-menu)
+#+end_src
+
+** difftastic
+#+begin_src emacs-lisp
+(use-package! difftastic
+  :after magit
+  :config
+  (eval-after-load 'magit-diff
+    '(transient-append-suffix 'magit-diff '(-1 -1)
+       [("D" "Difftastic diff (dwim)" difftastic-magit-diff)
+        ("S" "Difftastic show" difftastic-magit-show)]))
+  (setq difftastic-requested-window-width-function #'frame-width)
+  (setq difftastic-display-buffer-function
+        (lambda (buffer _requested-width)
+          (switch-to-buffer buffer))))
+#+end_src
+
+* その他キーバインド
+#+begin_src emacs-lisp
+(map! :leader
+      :desc "Toggle Scroll Bar"
+      "l s" #'scroll-bar-mode)
+
+(map! :leader
+      :desc "Vertico project search"
+      "/" #'+vertico/project-search)
+
+(map! :leader
+      :desc "Toggle Eldoc Mode"
+      "t e" #'eldoc-mode)
+#+end_src
+
+* Modeline
+下のgitのブランチ窓を広くする
+#+begin_src emacs-lisp
+(after! doom-modeline
+  (setq doom-modeline-vcs-max-length 80))
+#+end_src
+
+* 環境変数・PATH
+GUIアプリ起動時にシェルのPATHが引き継がれないため、mise shimsとNixのprofileパスを明示的に追加する。
+Nixのパスを落とすとGUI起動のEmacsからNix製のLSPサーバー等が見えなくなるので必ず残すこと。
+#+begin_src emacs-lisp
+(dolist (p (list (expand-file-name "~/.local/share/mise/shims")
+                 "/etc/profiles/per-user/taguchishoh/bin"
+                 "/run/current-system/sw/bin"
+                 "/nix/var/nix/profiles/default/bin"))
+  (setenv "PATH" (concat p ":" (getenv "PATH")))
+  (add-to-list 'exec-path p))
+#+end_src
+
+* DB接続ヘルパー
+auth-source から DB 接続情報を取り出すヘルパー
+#+begin_src emacs-lisp
+(defun get-db-password (host)
+  (funcall (plist-get (car (auth-source-search :host host)) :secret)))
+
+(defun get-db-user (host)
+  (plist-get (car (auth-source-search :host host)) :user))
+
+(defun get-db-port (host)
+  (string-to-number (plist-get (car (auth-source-search :host host)) :port)))
+#+end_src
+
+* Eldoc
+eldoc(下半分にドキュメントを表示する機能)をミニバッファだけに表示する
+#+begin_src emacs-lisp
+(setq eldoc-display-functions '(eldoc-display-in-echo-area))
+#+end_src
