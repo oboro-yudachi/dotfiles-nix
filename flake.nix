@@ -1,5 +1,5 @@
 {
-  description = "Home Manager configuration of taguchishoh";
+  description = "Mac (shounoMacBook-Air) の nix-darwin + home-manager 構成";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
@@ -15,24 +15,31 @@
   };
 
   outputs =
-    {
+    inputs@{
       self,
       nixpkgs,
-      home-manager,
       nix-darwin,
+      home-manager,
       nix-homebrew,
     }:
+    let
+      # ホスト固有の値はここ1箇所に集約する。
+      # 各ファイルに同じ値をハードコードすると多ホスト対応ができなくなるので、
+      # 参照は必ず specialArgs 経由にする。
+      username = "taguchishoh";
+      hostname = "shounoMacBook-Air"; # scutil --get LocalHostName
+      system = "aarch64-darwin";
+    in
     {
-      darwinConfigurations."shounoMacBook-Air" = nix-darwin.lib.darwinSystem {
-        specialArgs = {
-          inherit self nix-homebrew;
-        };
-
+      darwinConfigurations.${hostname} = nix-darwin.lib.darwinSystem {
+        inherit system;
+        specialArgs = { inherit self inputs username hostname; };
         modules = [
           ./nix-darwin/configuration.nix
-          home-manager.darwinModules.home-manager
-          nix-homebrew.darwinModules.nix-homebrew
         ];
       };
+
+      # `nix fmt` 用
+      formatter.${system} = nixpkgs.legacyPackages.${system}.nixfmt-tree;
     };
 }

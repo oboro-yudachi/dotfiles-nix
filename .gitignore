@@ -1,0 +1,14 @@
+# nix build の成果物
+result
+result-*
+
+# macOS
+.DS_Store
+
+# エディタ
+*~
+\#*\#
+.\#*
+
+# Doom: ~/.doom.d が repo を指す想定のツールがここに設定を作ることがある
+home-manager/doom.d/.claude/

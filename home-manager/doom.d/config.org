@@ -30,11 +30,36 @@
 (setq-default tab-width 2)
 #+end_src
 
+** インデントガイド（indent-bars）
+デフォルトは =highlight= フェイスの背景色をブレンドして色を決めるため、
+doom-one（暗いテーマ）だと黒に近くなり見えづらい。深さごとに =outline-N=
+フェイス（doom-oneでは彩度のある色が割り当て済み）を使うレインボー配色に変更し、
+現在のインデント階層だけ強調表示するようにする。
+#+begin_src emacs-lisp
+(after! indent-bars
+  (setq indent-bars-color-by-depth '(:regexp "outline-\\([0-9]+\\)" :blend 0.6)
+        indent-bars-highlight-current-depth '(:blend 0.8)
+        indent-bars-width-frac 0.25
+        indent-bars-pad-frac 0.1
+        ;; Retina等のHiDPI環境だとビットマップ(stipple)描画がピクセル計算で
+        ;; 崩れて単色(黒)になる既知の不具合があるため、文字ベース描画に切り替える。
+        indent-bars-prefer-character t))
+#+end_src
+
 * Org-mode
 ** ディレクトリ
 #+begin_src emacs-lisp
 (setq org-directory "~/repo/05_org/")
 (setq org-roam-directory org-directory)
+#+end_src
+
+** agendaの対象ディレクトリ
+org-agenda-files のディレクトリ指定はサブディレクトリに再帰しないため、
+roam/ を明示的に追加する（未設定だとDoomが (list org-directory) を設定し、
+直下の .org しか org-todo-list に出てこない）。
+#+begin_src emacs-lisp
+(setq org-agenda-files (list org-directory
+                             (expand-file-name "roam" org-directory)))
 #+end_src
 
 ** org-roam-node-findにタグを表示する
@@ -65,10 +90,8 @@ org-capture-templates のテンプレート本文（第5要素）は文字列 / 
           (file (lambda ()
                   (org-capture-put :my-title (read-string "Title: "))
                   (expand-file-name
-                   (concat (format-time-string "%Y%m%d-")
-                           (org-capture-get :my-title)
-                           ".org")
-                   org-directory)))
+                   (concat (org-capture-get :my-title) ".org")
+                   "~/repo/05_org/roam")))
           ,(concat ":PROPERTIES:\n"
                   ":ID: %(org-id-new)\n"
                   ":END:\n"
@@ -76,8 +99,31 @@ org-capture-templates のテンプレート本文（第5要素）は文字列 / 
                   "#+OPTIONS: broken-links:t toc:nil \\n:t ^:nil num:nil\n"
                   "#+DATE: %<%Y-%m-%d>\n"
                   "#+LANGUAGE: ja\n"
-                  "\n%?")
+                  "#+FILETAGS: %?"
+                  "Notion:")
           :jump-to-captured t)))
+#+end_src
+
+** captureテンプレのカスタマイズ（%a削除・TODO形式・ID付与）
+Doomデフォルトの "t" (todo) / "n" (notes) / "j" (journal) テンプレートを以下の方針で上書きする：
+- 本文末尾の ~%a~（capture呼び出し元へのリンク自動挿入）を外す
+- "t" はチェックボックス（~* [ ]~）ではなくTODOキーワード形式にする
+  （org-todo-listやagendaで拾えるのはTODOキーワードの方）
+- 見出し直下に ~:ID:~ プロパティを生成し、org-roamノードとして
+  リンク・バックリンクの対象になるようにする（"m" Work memoテンプレと同じ %(org-id-new) 方式）
+
+after! org はDoomがテンプレートを設定するorg-load-hookより後に走るため、ここで上書きできる。
+#+begin_src emacs-lisp
+(defconst my/org-capture-id-drawer
+  ":PROPERTIES:\n:ID:       %(org-id-new)\n:END:\n"
+  "captureテンプレートの見出し直下に入れるIDプロパティドロワー。")
+
+(after! org
+  (dolist (spec `(("t" . ,(concat "* TODO %?\n" my/org-capture-id-drawer "%i"))
+                  ("n" . ,(concat "* %u %?\n" my/org-capture-id-drawer "%i"))
+                  ("j" . ,(concat "* %U %?\n" my/org-capture-id-drawer "%i"))))
+    (when-let ((tpl (assoc (car spec) org-capture-templates)))
+      (setf (nth 4 tpl) (cdr spec)))))
 #+end_src
 
 ** org-roamノード作成時に保存先ディレクトリを選択する
@@ -105,7 +151,7 @@ org-roam-directory を org-directory 全体に広げたことで、ノードを�
 (after! org-roam
   (setq org-roam-capture-templates
         '(("d" "default" plain "%?"
-           :target (file+head "%(my/org-roam--select-directory)/%<%Y%m%d>-${slug}.org"
+           :target (file+head "%(my/org-roam--select-directory)/${slug}.org"
                                ":PROPERTIES:\n:ID:       %(org-id-new)\n:END:\n#+TITLE: ${title}\n#+OPTIONS: broken-links:t toc:nil \\n:t ^:nil num:nil\n#+DATE: %<%Y-%m-%d>\n#+LANGUAGE: ja\n")
            :unnarrowed t))))
 #+end_src
@@ -218,6 +264,41 @@ princでそこに書き込む。"
       :desc "Live HTML preview" "P" #'my/org-impatient-preview)
 #+end_src
 
+** org-tree-slide（プレゼンモード）
+Doomの +present フラグでorg-tree-slideは入っているが、起動用のキーバインドが
+無く M-x するしかない（Doomがバインドするのはスライド中の C-→ / C-← のみ）。
+localleaderの空きキー ~S~ (Slide) に起動トグルを割り当てる。
+
+スライド中のナビゲーションも、Ctrl不要の矢印キーと ~q~ で抜けられるように追加する
+（org-tree-slide-mode-map はスライド中しか効かないので普段の操作には影響しない）。
+evilのnormal stateキーマップを足すため、Doom本体と同様に evil-normalize-keymaps を
+呼ぶhookが必要だが、これは +present モジュールが既に追加済み。
+#+begin_src emacs-lisp
+(map! :map org-mode-map
+      :localleader
+      :desc "Present (org-tree-slide)" "S" #'org-tree-slide-mode)
+
+(after! org-tree-slide
+  (map! :map org-tree-slide-mode-map
+        :n [right] #'org-tree-slide-move-next-tree
+        :n [left]  #'org-tree-slide-move-previous-tree
+        :n "q"     #'org-tree-slide-mode))
+#+end_src
+
+Doomの +org-present--hide-first-heading-maybe-a advice は org-narrow-to-subtree を
+差し替えて (org-up-heading-all 99) で常にレベル1祖先ツリー全体へナローイングする。
+このためレベル2以下の見出しに進むと「ポイントは子見出し上・ナロー先頭は親見出し」の
+状態になり、org-tree-slide-move-next-tree の前進条件（ナロー先頭の見出しにいる or
+見出し行以外にいる）を満たせずスライド送りが止まる（1行下がると動くのはこのため）。
+本来 +org-present-hide-first-heading（未使用・デフォルトnil）のためのadviceなのに
+オフでも挙動を変えてしまうので、adviceごと外して素の挙動（各見出し＝1スライド、
+自身のサブツリーへナローイング）に戻す。
+#+begin_src emacs-lisp
+(after! org-tree-slide
+  (advice-remove 'org-tree-slide--display-tree-with-narrow
+                 #'+org-present--hide-first-heading-maybe-a))
+#+end_src
+
 ** file:リンクのエクスポート挙動
 file:リンクはエクスポート時にリンクではなく説明文（無ければパス）だけを出力する。
 ローカルの絶対パスはエクスポート先（Markdown/HTMLなど）では意味を持たないため。
@@ -267,18 +348,6 @@ org-mode中に箇条書きをするときは、改行したら自動で空気読
 (setq org-return-follows-link t)
 #+end_src
 
-** org-modernを無効化する（+pretty）
-見出しの折りたたみ記号（レベル3の ~⯈~ ~⯆~ = U+2BC8, U+2BC6）に続き、
-チェックボックス ~[ ]~ ~[X]~ の置き換えグリフ（☑ = U+2611、□ = U+25A1）も
-Hack Nerd Font Mono に無くて文字化けする。都度フォントに存在する文字を
-探して差し替えるのはキリがないので、org-modern-mode 自体を無効化する。
-+pretty フラグの他の機能（org-appear, org-hide-emphasis-markers,
-org-pretty-entities）は文字化けと無関係なので残す。
-#+begin_src emacs-lisp
-(remove-hook 'org-mode-hook #'org-modern-mode)
-(remove-hook 'org-agenda-finalize-hook #'org-modern-agenda)
-#+end_src
-
 * IME
 insertから抜けたタイミングとminibuffer終了時にABCキーレイアウトへ切り替える
 #+begin_src emacs-lisp
@@ -297,6 +366,47 @@ position優先にしてconsult-imenuの表示順をファイル内の出現順�
 #+begin_src emacs-lisp
 (after! lsp-mode
   (setq lsp-imenu-sort-methods '(position)))
+#+end_src
+
+** ファイルウォッチャの除外（Railsのtmp/）
+lsp-modeはワークスペース配下を同期的に走査してファイルウォッチャを張る。
+この走査が終わるまでバッファが開かないため、rbファイルを開くたびに待たされていた。
+
+myappでの実測（node_modulesと.gitはlsp-modeのデフォルト除外に入っている）:
+| 対象                       | ファイル数 |
+|----------------------------+------------|
+| 除外前                     |     44,263 |
+| tmp/ の内訳                |     39,791 |
+| tmp/とcoverage/を除外した後 |      4,399 |
+
+tmp/はbootsnapやviteのキャッシュで監視する意味がないが、lsp-modeの
+デフォルト除外には含まれていない。除外するだけで走査対象が90%減る。
+
+なお正規表現は末尾に \\' を付けてディレクトリ名の完全一致にしている。
+付けないとapp/tmpfooのような無関係なパスまで巻き込む。
+#+begin_src emacs-lisp
+(after! lsp-mode
+  (dolist (re '("[/\\\\]tmp\\'"
+                "[/\\\\]coverage\\'"
+                "[/\\\\]\\.bundle\\'"))
+    (add-to-list 'lsp-file-watch-ignored-directories re)))
+#+end_src
+
+** tree-sitterグラマーの自動インストール
+=typescript-ts-mode= / =tsx-ts-mode=（ネイティブtreesit）を使うが、グラマー本体
+（=.dylib=）はnixにもDoomの宣言的パッケージ管理（=packages.el=）にも乗らず、
+=~/.config/emacs/.local/etc/tree-sitter/= に手動ビルドされた状態でしか存在しない。
+=doom purge= や新規マシン展開でこのディレクトリが消えると
+"Cannot activate tree-sitter" 警告が復活するので、起動時に無ければ自動で
+ビルドし直す。
+#+begin_src emacs-lisp
+(setq treesit-language-source-alist
+      '((typescript "https://github.com/tree-sitter/tree-sitter-typescript" "master" "typescript/src")
+        (tsx        "https://github.com/tree-sitter/tree-sitter-typescript" "master" "tsx/src")))
+
+(dolist (lang (mapcar #'car treesit-language-source-alist))
+  (unless (treesit-language-available-p lang)
+    (ignore-errors (treesit-install-language-grammar lang))))
 #+end_src
 
 ** Ruby / TS
@@ -437,6 +547,10 @@ SPC w w (other-window) でtreemacsウィンドウにフォーカス移動でき�
 (map! :leader
       :desc "Toggle Eldoc Mode"
       "t e" #'eldoc-mode)
+
+(map! :leader
+      :desc "Toggle indent-bars"
+      "t i" #'indent-bars-mode)
 #+end_src
 
 * Modeline
@@ -447,15 +561,23 @@ SPC w w (other-window) でtreemacsウィンドウにフォーカス移動でき�
 #+end_src
 
 * 環境変数・PATH
-GUIアプリ起動時にシェルのPATHが引き継がれないため、mise shimsとNixのprofileパスを明示的に追加する。
-Nixのパスを落とすとGUI起動のEmacsからNix製のLSPサーバー等が見えなくなるので必ず残すこと。
+GUIアプリ起動時（Dock/Spotlight）はシェルのPATHが引き継がれず、launchdの最小PATH
+（=/usr/bin:/bin 等）しか入らない。そのため Emacs から外部コマンドを呼ぶには、
+必要な bin を exec-path / PATH に明示追加する必要がある。
+
+- mise shims: node / ruby 等のランタイム
+- nix プロファイル: home-manager で入れたコマンド（=rg= / =difft= 等）。
+  2026-07 に ripgrep / difftastic を Homebrew から nix へ移した際、これらは
+  =/etc/profiles/per-user/<user>/bin= に移動した。このパスは GUI 起動のPATHにも
+  =doom env= のスナップショットにも入らないため、Doom から見えなくなっていた。
+  スナップショット頼みは移行のたびに壊れるので、ここで恒久的に足しておく。
 #+begin_src emacs-lisp
-(dolist (p (list (expand-file-name "~/.local/share/mise/shims")
-                 "/etc/profiles/per-user/taguchishoh/bin"
-                 "/run/current-system/sw/bin"
-                 "/nix/var/nix/profiles/default/bin"))
-  (setenv "PATH" (concat p ":" (getenv "PATH")))
-  (add-to-list 'exec-path p))
+(dolist (dir (list (expand-file-name "~/.local/share/mise/shims")
+                   (format "/etc/profiles/per-user/%s/bin" (user-login-name))
+                   "/run/current-system/sw/bin"))
+  (when (file-directory-p dir)
+    (add-to-list 'exec-path dir)
+    (setenv "PATH" (concat dir ":" (getenv "PATH")))))
 #+end_src
 
 * DB接続ヘルパー
@@ -471,8 +593,245 @@ auth-source から DB 接続情報を取り出すヘルパー
   (string-to-number (plist-get (car (auth-source-search :host host)) :port)))
 #+end_src
 
+パスワードはコマンドライン引数ではなく MYSQL_PWD 環境変数で渡す
+（-p<パスワード> だと mysql が毎回 [Warning] を stderr に出すため）。
+nil を返すので ob-sql の :dbpassword に指定しても -p オプションは付かず、
+mysql クライアントが MYSQL_PWD を読む。
+#+begin_src emacs-lisp
+(defun set-mysql-pwd (host)
+  (setenv "MYSQL_PWD" (get-db-password host))
+  nil)
+#+end_src
+
 * Eldoc
 eldoc(下半分にドキュメントを表示する機能)をミニバッファだけに表示する
 #+begin_src emacs-lisp
 (setq eldoc-display-functions '(eldoc-display-in-echo-area))
+#+end_src
+
+* Packages
+:PROPERTIES:
+:header-args:emacs-lisp: :tangle packages.el
+:END:
+
+#+begin_src emacs-lisp
+;; -*- no-byte-compile: t; -*-
+;;; $DOOMDIR/packages.el
+
+(package! evil-matchit)
+(package! claude-code-ide
+  :recipe (:host github :repo "manzaltu/claude-code-ide.el"))
+
+(package! difftastic
+  :recipe (:host github :repo "pkryger/difftastic.el"))
+
+(package! org-roam-ui)
+
+(package! impatient-mode)
+;; MELPAの標準レシピだと別物（emacs-web-server）を指してしまい
+;; simple-httpd.el自体がビルドされない事象が起きたため、本家repoを明示指定する
+(package! simple-httpd
+  :recipe (:host github :repo "skeeto/simple-httpd"))
+
+(package! indent-bars)
+#+end_src
+
+* Init
+:PROPERTIES:
+:header-args:emacs-lisp: :tangle init.el
+:END:
+
+Doom のモジュール宣言（=doom!= マクロ）。従来 =init.el= に手書きしていたものを
+config.org に取り込んで設定を一本化した。このセクションは =init.el= に tangle される。
+
+*重要*: 生成された =init.el= は必ずコミット／保持すること。Doom は config.org より
+先に =init.el= を読むため、=init.el= が無いと =:config literate= が有効化されず、
+config.org の tangle 自体が走らない（ブートストラップの鶏卵問題）。
+
+#+begin_src emacs-lisp
+;;; init.el -*- lexical-binding: t; -*-
+
+(doom! :input
+       ;;bidi              ; (tfel ot) thgir etirw uoy gnipleh
+       ;;chinese
+       ;;japanese
+       ;;layout            ; auie,ctsrnm is the superior home row
+
+       :completion
+       (company +childframe)           ; the ultimate code completion backend
+       ;;(corfu +orderless)  ; complete with cap(f), cape and a flying feather!
+       ;;helm              ; the *other* search engine for love and life
+       ;;ido               ; the other *other* search engine...
+       ;;(ivy +fuzzy +icons) ; a search engine for love and life
+       vertico           ; the search engine of the future
+
+       :ui
+       ;;deft              ; notational velocity for Emacs
+       doom              ; what makes DOOM look the way it does
+       dashboard         ; a nifty splash screen for Emacs
+       ;;doom-quit         ; DOOM quit-message prompts when you quit Emacs
+       (emoji +unicode)  ; 🙂
+       hl-todo           ; highlight TODO/FIXME/NOTE/DEPRECATED/HACK/REVIEW
+       ;;indent-guides     ; highlighted indent columns
+       ;;ligatures         ; ligatures and symbols to make your code pretty again
+       ;;minimap           ; show a map of the code on the side
+       modeline          ; snazzy, Atom-inspired modeline, plus API
+       ;;nav-flash         ; blink cursor line after big motions
+       ;;neotree           ; a project drawer, like NERDTree for vim
+       ophints           ; highlight the region an operation acts on
+       (popup +defaults)   ; tame sudden yet inevitable temporary windows
+       smooth-scroll     ; So smooth you won't believe it's not butter
+       ;;tabs              ; a tab bar for Emacs
+       (treemacs +lsp)          ; a project drawer, like neotree but cooler
+       unicode           ; extended unicode support for various languages
+       (vc-gutter +pretty) ; vcs diff in the fringe
+       vi-tilde-fringe   ; fringe tildes to mark beyond EOB
+       ;;window-select     ; visually switch windows
+       workspaces        ; tab emulation, persistence & separate workspaces
+       ;;zen               ; distraction-free coding or writing
+
+       :editor
+       (evil +everywhere); come to the dark side, we have cookies
+       file-templates    ; auto-snippets for empty files
+       fold              ; (nigh) universal code folding
+       ;;(format +onsave)  ; automated prettiness
+       ;;god               ; run Emacs commands without modifier keys
+       ;;lispy             ; vim for lisp, for people who don't like vim
+       ;;multiple-cursors  ; editing in many places at once
+       ;;objed             ; text object editing for the innocent
+       ;;parinfer          ; turn lisp into python, sort of
+       ;;rotate-text       ; cycle region at point between text candidates
+       snippets          ; my elves. They type so I don't have to
+       (whitespace +guess +trim)  ; a butler for your whitespace
+       ;;word-wrap         ; soft wrapping with language-aware indent
+
+       :emacs
+       dired             ; making dired pretty [functional]
+       electric          ; smarter, keyword-based electric-indent
+       ;;eww               ; the internet is gross
+       ibuffer           ; interactive buffer management
+       tramp             ; remote files at your arthritic fingertips
+       undo              ; persistent, smarter undo for your inevitable mistakes
+       vc                ; version-control and Emacs, sitting in a tree
+
+       :term
+       ;;eshell            ; the elisp shell that works everywhere
+       ;;shell             ; simple shell REPL for Emacs
+       ;;term              ; basic terminal emulator for Emacs
+       vterm             ; the best terminal emulation in Emacs
+
+       :checkers
+       syntax              ; tasing you for every semicolon you forget
+       ;;(spell +flyspell) ; tasing you for misspelling mispelling
+       ;;grammar           ; tasing grammar mistake every you make
+
+       :tools
+       ;;ansible
+       ;;biblio            ; Writes a PhD for you (citation needed)
+       ;;collab            ; buffers with friends
+       ;;debugger          ; stepping through code, to help you add bugs
+       ;;direnv
+       docker
+       ;;editorconfig      ; let someone else argue about tabs vs spaces
+       ;;ein               ; tame Jupyter notebooks with emacs
+       (eval +overlay)     ; run code, run (also, repls)
+       lookup              ; navigate your code and its documentation
+       ;;llm               ; when I said you needed friends, I didn't mean...
+       (lsp +peek)              ; M-x vscode
+       (magit +forge)             ; a git porcelain for Emacs
+       ;;make              ; run make tasks from Emacs
+       ;;pass              ; password manager for nerds
+       pdf                 ; pdf enhancements
+       ;;terraform         ; infrastructure as code
+       ;;tmux              ; an API for interacting with tmux
+       tree-sitter        ; syntax and parsing, sitting in a tree...
+       ;;upload            ; map local to remote projects via ssh/ftp
+
+       :os
+       (:if (featurep :system 'macos) macos)  ; improve compatibility with macOS
+       ;;tty               ; improve the terminal Emacs experience
+
+       :lang
+       ;;ada               ; In strong typing we (blindly) trust
+       (agda +local)     ; types of types of types of types...
+       ;;beancount         ; mind the GAAP
+       ;;(cc +lsp)         ; C > C++ == 1
+       ;;clojure           ; java with a lisp
+       ;;common-lisp       ; if you've seen one lisp, you've seen them all
+       ;;coq               ; proofs-as-programs
+       ;;crystal           ; ruby at the speed of c
+       ;;csharp            ; unity, .NET, and mono shenanigans
+       ;;data              ; config/data formats
+       ;;(dart +flutter)   ; paint ui and not much else
+       ;;dhall
+       ;;elixir            ; erlang done right
+       ;;elm               ; care for a cup of TEA?
+       emacs-lisp        ; drown in parentheses
+       ;;erlang            ; an elegant language for a more civilized age
+       ;;ess               ; emacs speaks statistics
+       ;;factor
+       ;;faust             ; dsp, but you get to keep your soul
+       ;;fortran           ; in FORTRAN, GOD is REAL (unless declared INTEGER)
+       ;;fsharp            ; ML stands for Microsoft's Language
+       ;;fstar             ; (dependent) types and (monadic) effects and Z3
+       ;;gdscript          ; the language you waited for
+       ;;(go +lsp)         ; the hipster dialect
+       ;;(graphql +lsp)    ; Give queries a REST
+       (haskell +lsp)    ; a language that's lazier than I am
+       ;;hy                ; readability of scheme w/ speed of python
+       ;;idris             ; a language you can depend on
+       json              ; At least it ain't XML
+       ;;janet             ; Fun fact: Janet is me!
+       ;;(java +lsp)       ; the poster child for carpal tunnel syndrome
+       (javascript +lsp +tree-sitter)  ; all(hope(abandon(ye(who(enter(here))))))
+       ;;julia             ; a better, faster MATLAB
+       ;;kotlin            ; a better, slicker Java(Script)
+       ;;latex             ; writing papers in Emacs has never been so fun
+       ;;lean              ; for folks with too much to prove
+       ;;ledger            ; be audit you can be
+       lua               ; one-based indices? one-based indices
+       markdown                  ; writing docs for people to ignore
+       ;;nim               ; python + lisp at the speed of c
+       nix               ; I hereby declare "nix geht mehr!"
+       ;;ocaml             ; an objective camel
+       ;;odin              ; C, minus its footguns
+       (org +crypt +jupyter +pandoc +roam +pretty)  ; organize your plain life in plain text
+       ;;(php +lsp)        ; perl's insecure younger brother
+       ;;plantuml          ; diagrams for confusing people more
+       ;;graphviz          ; diagrams for confusing yourself even more
+       ;;purescript        ; javascript, but functional
+       ;;python            ; beautiful is better than ugly
+       ;;qt                ; the 'cutest' gui framework ever
+       ;;racket            ; a DSL for DSLs
+       ;;raku              ; the artist formerly known as perl6
+       ;;rest              ; Emacs as a REST client
+       ;;rst               ; ReST in peace
+       (ruby +rails +lsp) ; 1.step {|i| p "Ruby is #{i.even? ? 'love' : 'life'}"}
+       ;;(rust +lsp)       ; Fe2O3.unwrap().unwrap().unwrap().unwrap()
+       ;;scala             ; java, but good
+       ;;(scheme +guile)   ; a fully conniving family of lisps
+       sh                ; she sells {ba,z,fi}sh shells on the C xor
+       ;;sml
+       ;;solidity          ; do you need a blockchain? No.
+       ;;swift             ; who asked for emoji variables?
+       ;;terra             ; Earth and Moon in alignment for performance.
+       web               ; the tubes
+       yaml              ; JSON, but readable
+       ;;zig               ; C, but simpler
+
+       :email
+       ;;(mu4e +org +gmail)
+       ;;notmuch
+       ;;(wanderlust +gmail)
+
+       :app
+       ;;calendar
+       ;;emms
+       ;;everywhere        ; *leave* Emacs!? You must be joking
+       ;;irc               ; how neckbeards socialize
+       ;;(rss +org)        ; emacs as an RSS reader
+
+       :config
+       literate
+       (default +bindings +smartparens))
 #+end_src
