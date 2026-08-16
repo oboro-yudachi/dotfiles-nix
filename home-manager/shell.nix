@@ -9,7 +9,8 @@
 
   home.sessionPath = [
     "$HOME/.local/bin"
-    "$HOME/.emacs.d/bin"
+    # Doom core は XDG 準拠で ~/.config/emacs に置く方針（旧 ~/.emacs.d から移行）
+    "$HOME/.config/emacs/bin"
   ];
 
   home.shellAliases = {

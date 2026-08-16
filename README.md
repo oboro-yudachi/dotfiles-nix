@@ -18,7 +18,7 @@ home-manager/
   shell.nix      # zsh とシェル系ツール
   git.nix        # git / gh / delta / lazygit
   cli.nix        # 汎用 CLI ツール・言語ランタイム
-  emacs.nix      # ~/.doom.d と Doom の外部依存
+  emacs.nix      # ~/.config/doom（$DOOMDIR）と Doom の外部依存
   doom.d/        # Doom Emacs の設定（config.org が本体、init.el/packages.el を tangle）
 docs/
   emacs-startup.md      # Emacs 起動が遅い件の調査ログ

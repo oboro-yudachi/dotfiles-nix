@@ -21,7 +21,7 @@
         ;; 崩れて単色(黒)になる既知の不具合があるため、文字ベース描画に切り替える。
         indent-bars-prefer-character t))
 
-(setq org-directory "~/dev/org/")
+(setq org-directory "~/repo/05_org/")
 (setq org-roam-directory org-directory)
 
 (setq org-agenda-files (list org-directory
@@ -40,7 +40,7 @@
                   (org-capture-put :my-title (read-string "Title: "))
                   (expand-file-name
                    (concat (org-capture-get :my-title) ".org")
-                   "~/dev/org/roam")))
+                   "~/repo/05_org/roam")))
           ,(concat ":PROPERTIES:\n"
                   ":ID: %(org-id-new)\n"
                   ":END:\n"
