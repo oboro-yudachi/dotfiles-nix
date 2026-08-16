@@ -81,7 +81,6 @@
 
       # --- 実機の /Applications を調査して cask 化できたもの ---
       "appcleaner"
-      "arc"
       "aside"
       "brave-browser"
       "claude"
@@ -97,7 +96,6 @@
       "one-switch"
       "raycast" # "Raycast Beta.app"（bundle id が別系統の次世代版）は cask が無いので対象外
       "yoink"
-      "thebrowsercompany-dia" # .app 名は "Dia"
 
       # --- 未対応（cask はあるが今の brew のバージョンだと cask 定義の
       #     パースに失敗する。`brew update` してから追加すること） ---
