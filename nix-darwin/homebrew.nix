@@ -62,6 +62,10 @@
       "openssl@3"
       "readline"
       "zstd"
+
+      # --- 汎用 CLI ツール（nixpkgs 未対応、または homebrew-core 版を使う方針のもの） ---
+      # Oracle Cloud Infrastructure の公式 CLI
+      "oci-cli"
     ];
 
     # ★初回だけ手動で --adopt / --force が必要★
