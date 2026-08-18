@@ -392,22 +392,15 @@ tmp/はbootsnapやviteのキャッシュで監視する意味がないが、lsp-
     (add-to-list 'lsp-file-watch-ignored-directories re)))
 #+end_src
 
-** tree-sitterグラマーの自動インストール
-=typescript-ts-mode= / =tsx-ts-mode=（ネイティブtreesit）を使うが、グラマー本体
-（=.dylib=）はnixにもDoomの宣言的パッケージ管理（=packages.el=）にも乗らず、
-=~/.config/emacs/.local/etc/tree-sitter/= に手動ビルドされた状態でしか存在しない。
-=doom purge= や新規マシン展開でこのディレクトリが消えると
-"Cannot activate tree-sitter" 警告が復活するので、起動時に無ければ自動で
-ビルドし直す。
-#+begin_src emacs-lisp
-(setq treesit-language-source-alist
-      '((typescript "https://github.com/tree-sitter/tree-sitter-typescript" "master" "typescript/src")
-        (tsx        "https://github.com/tree-sitter/tree-sitter-typescript" "master" "tsx/src")))
-
-(dolist (lang (mapcar #'car treesit-language-source-alist))
-  (unless (treesit-language-available-p lang)
-    (ignore-errors (treesit-install-language-grammar lang))))
-#+end_src
+** tree-sitterグラマー
+=typescript-ts-mode= / =tsx-ts-mode= / =js-ts-mode=（ネイティブtreesit）が使う
+グラマー本体（=.dylib=）は、nix-managed（home-manager/emacs.nix、
+=pkgs.emacsPackages.treesit-grammars.with-grammars=）で
+=~/.config/emacs/.local/cache/tree-sitter= に宣言的に配置している。
+=doom purge= や新規マシン展開でファイルが消えても、次の
+=darwin-rebuild switch= で復元される。起動時のダウンロード／ビルドや
+=treesit-language-source-alist= の手動保守は不要。言語を増やす場合は
+=home-manager/emacs.nix= の =treesitGrammars= にgrammar名を追記する。
 
 ** Ruby / TS
 bundle exec経由でruby-lspを起動しない（GemfileにはrubyLSPは含まれていないため）。

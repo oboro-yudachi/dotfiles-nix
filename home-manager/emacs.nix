@@ -25,8 +25,23 @@
 # emacs-plus@30 本体とそのビルド／連携チェーン（gcc / libgccjit / cmake / libvterm /
 # poppler 等）は nix-darwin/homebrew.nix 側で管理する。
 { config, lib, pkgs, ... }:
+let
+  # ネイティブtreesit用のグラマー（.dylib）をnixpkgsのビルド済みものから調達する。
+  # emacs-plus本体はHomebrew管理のままでよい（Emacsのビルドに手を入れる必要はなく、
+  # treesitが探す ~/.config/emacs/.local/cache/tree-sitter に .dylib を置くだけでよい）。
+  # 言語を増やしたいときはここにgrammar名を足すだけ。elisp側の
+  # treesit-language-source-alist / treesit-install-language-grammar は一切不要。
+  treesitGrammars = pkgs.emacsPackages.treesit-grammars.with-grammars (g: with g; [
+    tree-sitter-javascript
+    tree-sitter-jsdoc
+    tree-sitter-typescript
+    tree-sitter-tsx
+  ]);
+in
 {
   xdg.configFile."doom".source = config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/dotfiles/home-manager/doom.d";
+
+  xdg.configFile."emacs/.local/cache/tree-sitter".source = "${treesitGrammars}/lib";
 
   # ★Dock / Spotlight から開くための Emacs.app★
   # emacs-plus は formula（cask ではない）なので Homebrew は .app を Cellar に

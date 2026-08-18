@@ -209,14 +209,6 @@ princでそこに書き込む。"
                 "[/\\\\]\\.bundle\\'"))
     (add-to-list 'lsp-file-watch-ignored-directories re)))
 
-(setq treesit-language-source-alist
-      '((typescript "https://github.com/tree-sitter/tree-sitter-typescript" "master" "typescript/src")
-        (tsx        "https://github.com/tree-sitter/tree-sitter-typescript" "master" "tsx/src")))
-
-(dolist (lang (mapcar #'car treesit-language-source-alist))
-  (unless (treesit-language-available-p lang)
-    (ignore-errors (treesit-install-language-grammar lang))))
-
 (after! lsp-mode
   (setq lsp-ruby-lsp-use-bundler nil)
   (setq lsp-disabled-clients (append lsp-disabled-clients '(ruby-ls rubocop-ls)))
