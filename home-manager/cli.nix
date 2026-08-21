@@ -21,6 +21,9 @@
     tree-sitter
     _7zz
 
+    # Networking
+    cloudflared
+
     # Search
     fd
     ripgrep
