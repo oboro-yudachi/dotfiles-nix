@@ -1,5 +1,5 @@
 # git / gh / diff ツール周り。
-{ ... }:
+{ pkgs, lib, ... }:
 {
   programs.git = {
     enable = true;
@@ -32,4 +32,11 @@
   };
 
   programs.lazygit.enable = true;
+
+  # gh-stack は nixpkgs 未対応のため gh extension install で管理
+  home.activation.installGhStackExtension = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    if [ ! -d "$HOME/.local/share/gh/extensions/gh-stack" ]; then
+      ${pkgs.gh}/bin/gh extension install github/gh-stack
+    fi
+  '';
 }
