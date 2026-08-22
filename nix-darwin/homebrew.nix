@@ -63,6 +63,34 @@
       "readline"
       "zstd"
 
+      # --- emacs-plus@30 の transitive dependency（2026-08-22 の事故を受けて明示化） ---
+      # 本来は `brews` に載っている emacs-plus@30 の依存として `cleanup="zap"` から
+      # 保護されるはずだが、flake.lock の Homebrew 本体メジャーアップデート
+      # （brew-src 5.1.11 → 6.0.16）を挟んだ darwin-rebuild switch で、この依存関係の
+      # 解決が壊れてこれら十数個の formula が丸ごと zap され、Emacs.app が
+      # "Library not loaded" でクラッシュする事故が起きた。
+      # `brew deps -n d12frosted/emacs-plus/emacs-plus@30` の出力を裏取りに、
+      # zap で消えたものを明示的に固定しておく。詳細は docs/homebrew-zap-emacs-crash.md。
+      "gcc"
+      "gdk-pixbuf"
+      "giflib"
+      "graphite2"
+      "harfbuzz"
+      "fribidi"
+      "icu4c@78"
+      "isl"
+      "json-c"
+      "libdatrie"
+      "libgccjit"
+      "libmpc"
+      "librsvg"
+      "libthai"
+      "mpfr"
+      "pango"
+      "tree-sitter@0.25"
+      "webp"
+      "zlib"
+
       # --- 汎用 CLI ツール（nixpkgs 未対応、または homebrew-core 版を使う方針のもの） ---
       # Oracle Cloud Infrastructure の公式 CLI
       "oci-cli"
