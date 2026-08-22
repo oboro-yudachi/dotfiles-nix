@@ -105,3 +105,35 @@ cat /opt/homebrew/Cellar/emacs-plus@30/*/INSTALL_RECEIPT.json \
 相当（Nix生成 Brewfile に対して）で削除対象を確認する、または
 `brew deps --tree d12frosted/emacs-plus/emacs-plus@30` と実機の Cellar を
 突き合わせてから switch する運用が望ましい。
+
+## 追記（2026-08-23）: brew 6 系のタップ信頼（trust）エラー
+
+同じ brew-src 6.0.16 化の副作用で、後日 `darwin-rebuild switch` 実行時に
+今度は別のエラーで `Homebrew bundle` が失敗した。
+
+```
+Warning: Calling the `--cleanup` switch is deprecated! There is no replacement.
+Warning: Cannot check whether d12frosted/emacs-plus/emacs-plus@30 is outdated because its tap is not trusted. ...
+Error: Refusing to load formula d12frosted/emacs-plus/emacs-plus@30 from untrusted tap d12frosted/emacs-plus.
+Run `brew trust --formula d12frosted/emacs-plus/emacs-plus@30` or `brew trust d12frosted/emacs-plus` to trust it.
+```
+
+Homebrew 6 系で追加された、Ruby コードを含むサードパーティ tap（今回なら
+`d12frosted/emacs-plus`）を明示的に信頼（trust）しないと formula を
+ロードできないようにするセキュリティ機能に引っかかったもの。
+
+この trust 状態は Brewfile / Nix で宣言できるものではなく、マシンごとの
+ローカルな brew の状態（信頼済み tap リスト）として保存される。そのため
+Nix 側で自動化する手段がなく、**新しいマシンをセットアップした場合や、
+何らかの理由で trust 状態がリセットされた場合は、一度だけ手動で**以下を
+実行する必要がある。
+
+```sh
+brew trust d12frosted/emacs-plus
+```
+
+実行後は `darwin-rebuild switch` を再実行すれば通常どおり進む。
+
+なお `--cleanup` 非推奨の警告と、依存解決グラフでの `libtiff`/`webp` の
+循環依存警告は、この trust エラーとは無関係な単なる警告でビルドは
+ブロックされない。
