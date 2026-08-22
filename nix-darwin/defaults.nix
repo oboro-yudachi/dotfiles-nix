@@ -39,9 +39,14 @@
   };
 
   # system.defaults の一部（Dock の autohide 等）は再ログインまで反映されない。
-  # activateSettings -u で即時反映する。2025-01-30 以降 postUserActivation は削除され、
-  # activation は全て root 実行なので postActivation を使う。
+  # 以前は activateSettings -u で即時反映していたが、これはシステム設定全体の
+  # 再読み込みを引き起こし、darwin-rebuild switch のたびに OS のキーボード入力
+  # ソース（キー配置）の選択状態がリセットされる副作用があった。
+  # 対象を絞って Dock / Finder だけ再起動する方式に変更する。
+  # 2025-01-30 以降 postUserActivation は削除され、activation は全て root 実行
+  # なので postActivation を使う。
   system.activationScripts.postActivation.text = ''
-    /System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u
+    /usr/bin/killall Dock || true
+    /usr/bin/killall Finder || true
   '';
 }
