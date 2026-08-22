@@ -49,4 +49,12 @@
       ${pkgs.nodejs_24}/bin/npm install -g ccusage --prefix "$HOME/.local"
     fi
   '';
+
+  # Notion CLI (ntn) も nixpkgs / homebrew 未対応のため npm グローバルインストールで管理
+  # https://developers.notion.com/cli/get-started/installation
+  home.activation.installNtn = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    if [ ! -f "$HOME/.local/bin/ntn" ]; then
+      ${pkgs.nodejs_24}/bin/npm install -g ntn --prefix "$HOME/.local"
+    fi
+  '';
 }
