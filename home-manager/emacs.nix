@@ -36,6 +36,7 @@ let
     tree-sitter-jsdoc
     tree-sitter-typescript
     tree-sitter-tsx
+    tree-sitter-python
   ]);
 in
 {

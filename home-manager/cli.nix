@@ -41,6 +41,9 @@
     (python314.withPackages (ps: with ps; [ jupyter ipykernel ]))
     ruby_4_0
     uv
+
+    pyright
+    ruff
   ];
 
   # ccusage は nixpkgs 未対応のため npm グローバルインストールで管理
