@@ -36,6 +36,7 @@
     global.brewfile = true;
 
     taps = [
+      "abue-ammar/tinycast" # tinycast cask は homebrew-cask 本体未収録の個人 tap から配布
       "d12frosted/emacs-plus"
     ];
 
@@ -129,24 +130,10 @@
       "raycast" # "Raycast Beta.app"（bundle id が別系統の次世代版）は cask が無いので対象外
       "yoink"
 
-      # --- 未対応（cask はあるが今の brew のバージョンだと cask 定義の
-      #     パースに失敗する。`brew update` してから追加すること） ---
-      # "obs"
-      # "zoom"
-
-      # --- cask が存在しないので対象外 ---
-      # LINE.app / RunCat.app / RunCatNeo.app
-      # Keynote.app / Numbers.app / Final Cut Pro.app / Compressor.app（Mac App Store）
-      # CheatSheet.app（旧 cheatsheet cask。上流で開発終了・配布停止のため
-      #   2025-11-09 に Homebrew 側でも無効化された。DL URL が 404 で二度と入らない）
-      # Glaze.app（cask token: glaze-app）。cask が配布する dmg 自体の Info.plist が
-      #   壊れていて CFBundleShortVersionString が "0.0.0" になっており、既存の
-      #   /Applications/Glaze.app（0.8.0）と版が一致しないとして --adopt が失敗する
-      #   （2026-08 時点で確認）。上流の dmg が直るまで対象外。
-      # Minecraft.app / Spotify.app: アプリ自身のオートアップデーターで常時更新される
-      #   タイプで、実機の方が brew の cask より新しかったり（minecraft: 実機2.2.2 vs
-      #   cask 2.1.3）、バージョン体系自体が噛み合わない（spotify）。brew 管理下に
-      #   置くとダウングレードや adopt 失敗が起きるので意図的に対象外のまま。
+      # --- 個人 tap（homebrew-cask 本体未収録） ---
+      # macOS 26 (Tahoe) 以降 & arm64 前提。Sequoia 向け/Universal 向けの別 cask もあるが
+      # 実機（macOS 27, arm64）にはこちらが対応する。
+      "abue-ammar/tinycast/tinycast"
     ];
   };
 }
