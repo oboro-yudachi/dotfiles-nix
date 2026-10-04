@@ -65,7 +65,18 @@
     };
   };
 
-  programs.zsh.enable = true;
+  programs.zsh = {
+    enable = true;
+    # Lore 用の Notion PAT は macOS キーチェーン（service: notion-api-token）に置き、
+    # 起動時に読み出して環境変数へ渡す。nix のファイルは Nix store に誰でも読める形で
+    # 置かれるため、トークン本体はここに書かない。未登録なら何もしない。
+    initContent = ''
+      if _notion_token="$(security find-generic-password -a "$USER" -s notion-api-token -w 2>/dev/null)"; then
+        export NOTION_API_TOKEN="$_notion_token"
+      fi
+      unset _notion_token
+    '';
+  };
 
   # Ghostty のターミナル設定。
   xdg.configFile."ghostty/config".source = ./ghostty/config;
