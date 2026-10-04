@@ -36,7 +36,6 @@
     global.brewfile = true;
 
     taps = [
-      "abue-ammar/tinycast" # tinycast cask は homebrew-cask 本体未収録の個人 tap から配布
       "d12frosted/emacs-plus"
     ];
 
@@ -129,11 +128,6 @@
       "one-switch"
       "raycast" # "Raycast Beta.app"（bundle id が別系統の次世代版）は cask が無いので対象外
       "yoink"
-
-      # --- 個人 tap（homebrew-cask 本体未収録） ---
-      # macOS 26 (Tahoe) 以降 & arm64 前提。Sequoia 向け/Universal 向けの別 cask もあるが
-      # 実機（macOS 27, arm64）にはこちらが対応する。
-      "abue-ammar/tinycast/tinycast"
     ];
   };
 }
