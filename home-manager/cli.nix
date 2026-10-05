@@ -63,4 +63,13 @@
       PATH="${pkgs.nodejs_24}/bin:$PATH" ${pkgs.nodejs_24}/bin/npm install -g ntn --prefix "$HOME/.local"
     fi
   '';
+
+  # Lore（Notion をバックエンドにした AI メモリ）も nixpkgs 未対応のため npm グローバルインストールで管理
+  # https://github.com/makenotion/lore
+  # 認証トークン（NOTION_API_TOKEN）はここには書かない。
+  home.activation.installLore = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    if [ ! -f "$HOME/.local/bin/lore" ]; then
+      PATH="${pkgs.nodejs_24}/bin:$PATH" ${pkgs.nodejs_24}/bin/npm install -g @notionhq/lore --prefix "$HOME/.local"
+    fi
+  '';
 }
