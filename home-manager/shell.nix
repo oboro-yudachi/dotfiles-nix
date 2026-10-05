@@ -5,6 +5,9 @@
     EDITOR = "emacsclient -t -a 'emacs'";
     VISUAL = "emacsclient -c -a 'emacs'";
     LANG = "ja_JP.UTF-8";
+    # Lore の AI 検索（POST /v1/tools/run）は PAT では 403 になり、Notion も公開 API 外と回答している
+    # （makenotion/lore#962）。Lore 1.0.0 は自動で REST 検索に切り替えないため、明示的に REST 検索を使う。
+    LORE_USE_RUNTOOL_SEARCH = "0";
   };
 
   home.sessionPath = [
