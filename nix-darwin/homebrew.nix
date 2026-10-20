@@ -119,6 +119,7 @@
       "claude"
       "cmux" # Ghostty ベースのターミナル。homebrew-cask 本体に統合済みで tap 不要
       "discord"
+      "docker"
       "eagle"
       "figma"
       "google-chrome"
