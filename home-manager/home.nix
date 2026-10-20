@@ -7,6 +7,8 @@
     ./git.nix
     ./cli.nix
     ./emacs.nix
+    ./nvim.nix
+    ./orca.nix
   ];
 
   home.username = username;
