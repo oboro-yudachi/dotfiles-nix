@@ -37,6 +37,7 @@
 
     taps = [
       "d12frosted/emacs-plus"
+      "dominion525/tap" # ⌘英かな（iMasanari 版のフォーク）の cask。homebrew-cask 本体のは無効化済み
     ];
 
     brews = [
@@ -128,6 +129,12 @@
       "one-switch"
       "raycast" # "Raycast Beta.app"（bundle id が別系統の次世代版）は cask が無いので対象外
       "yoink"
+
+      # --- 個人 tap（homebrew-cask 本体未収録） ---
+      # ⌘英かな。実機は dominion525 版のフォーク（アプリ内アップデートあり）。
+      # 本体の cmd-eikana cask は上流（iMasanari 版 2.2.3）が Gatekeeper を通らず
+      # 2026-09 に無効化されているので使えない。
+      "dominion525/tap/cmd-eikana"
     ];
   };
 }
