@@ -137,9 +137,8 @@
       # 2026-09 に無効化されているので使えない。
       "dominion525/tap/cmd-eikana"
 
-      # Orca（stablyai/orca）は cask が無く、Nix でも管理しない。公式 DMG から
-      # /Applications に入れ、アプリ自身に自動更新させる。home-manager で入れると
-      # switch のたびに copyApps が固定版で上書きし、自動更新を巻き戻してしまう。
+      # Orca（stablyai/orca）は cask が無いので、home-manager/orca.nix の
+      # アクティベーションが未インストール時だけ公式 DMG から /Applications に入れる。
     ];
   };
 }
