@@ -1,47 +1,74 @@
-# Orca（stablyai/orca、コーディングエージェント用デスクトップアプリ）を公式 DMG から入れる。
-# nixpkgs の `orca` は GNOME のスクリーンリーダーなので使えない。
-# Homebrew にも同名の cask は無い（あるのは plotly の orca）。
-# 更新するときは version を上げ、hash は下記で取り直す:
-#   nix-prefetch-url https://github.com/stablyai/orca/releases/download/v<version>/orca-macos-arm64.dmg
-{ pkgs, ... }:
+# Orca（stablyai/orca、コーディングエージェント用デスクトップアプリ）。
+# nixpkgs の `orca` は GNOME のスクリーンリーダー、Homebrew の `orca` は plotly のもので別物。
+{ pkgs, lib, ... }:
 let
-  version = "1.4.230";
+  # 引数のディレクトリ（既定 /Applications）に Orca.app が無いときだけ、最新の公式 DMG から入れる。
+  # 失敗してもアクティベーション全体は止めず、警告だけ出して 0 で抜ける。
+  installOrcaApp = pkgs.writeShellScript "install-orca-app" ''
+    set -u
+    dest="''${1:-/Applications}"
+    app="$dest/Orca.app"
+    url="https://github.com/stablyai/orca/releases/latest/download/orca-macos-arm64.dmg"
+    # 版を固定しない代わりに署名者を固定する（Developer ID: Lovecast LLC）
+    requirement='anchor apple generic and certificate leaf[subject.OU] = "6CX3WHS9HZ"'
 
-  orca = pkgs.stdenvNoCC.mkDerivation {
-    pname = "orca";
-    inherit version;
+    warn() { echo "warning: installOrca: $*" >&2; }
 
-    src = pkgs.fetchurl {
-      url = "https://github.com/stablyai/orca/releases/download/v${version}/orca-macos-arm64.dmg";
-      hash = "sha256-+N6fmR+unHJmyTfM81WNj/l9l0hycP1ejzMqc7lWpuQ=";
-    };
+    [ -e "$app" ] && exit 0
 
-    # undmg が .dmg の unpack フックを提供する
-    nativeBuildInputs = [ pkgs.undmg ];
-    sourceRoot = ".";
+    tmp=$(mktemp -d "''${TMPDIR:-/tmp}/install-orca.XXXXXX") || {
+      warn "一時ディレクトリを作れなかった。Orca のインストールを飛ばす"
+      exit 0
+    }
+    mnt="$tmp/mnt"
+    attached=0
+    cleanup() {
+      if [ "$attached" = 1 ]; then
+        /usr/bin/hdiutil detach -quiet "$mnt" || /usr/bin/hdiutil detach -quiet -force "$mnt"
+      fi
+      rm -rf "$tmp"
+    }
+    trap cleanup EXIT
 
-    # fixup（shebang 書き換え等）を走らせると署名済みバンドルの seal が壊れるので無効化する
-    dontFixup = true;
+    echo "Orca.app が $dest に無いので最新の公式 DMG から入れる"
+    if ! /usr/bin/curl -fsSL --retry 2 --connect-timeout 30 --max-time 900 -o "$tmp/orca.dmg" "$url"; then
+      warn "DMG のダウンロードに失敗した（''${url}）。Orca のインストールを飛ばす"
+      exit 0
+    fi
 
-    installPhase = ''
-      runHook preInstall
+    mkdir "$mnt"
+    if ! /usr/bin/hdiutil attach -readonly -nobrowse -noautoopen -quiet -mountpoint "$mnt" "$tmp/orca.dmg"; then
+      warn "DMG をマウントできなかった。Orca のインストールを飛ばす"
+      exit 0
+    fi
+    attached=1
 
-      mkdir -p "$out/Applications"
-      cp -R *.app "$out/Applications/"
+    if [ ! -d "$mnt/Orca.app" ]; then
+      warn "DMG に Orca.app が無い。Orca のインストールを飛ばす"
+      exit 0
+    fi
 
-      runHook postInstall
-    '';
+    if ! /usr/bin/ditto "$mnt/Orca.app" "$app"; then
+      warn "$app へのコピーに失敗した。途中までのコピーを消す"
+      rm -rf "$app"
+      exit 0
+    fi
 
-    meta = {
-      description = "Agent development environment for running coding agents in parallel";
-      homepage = "https://www.onorca.dev/";
-      license = pkgs.lib.licenses.mit;
-      platforms = [ "aarch64-darwin" ];
-      sourceProvenance = [ pkgs.lib.sourceTypes.binaryNativeCode ];
-    };
-  };
+    if ! /usr/bin/codesign --verify --deep --strict -R="$requirement" "$app"; then
+      warn "$app の署名検証（team ID 6CX3WHS9HZ）に失敗したので消す"
+      rm -rf "$app"
+      exit 0
+    fi
+
+    echo "Orca.app を $dest に入れた"
+  '';
 in
 {
-  # home-manager の darwin.copyApps（デフォルトで有効）で ~/Applications/Home Manager Apps に配置される
-  home.packages = [ orca ];
+  # Nix はインストール済みかどうかだけを保証し、バージョンは固定しない。
+  # Orca はアプリ内で自分自身を上書き更新する。以前はパッケージとして固定版を
+  # home.packages に入れていたが、copyApps（rsync --delete）が switch のたびに
+  # ~/Applications/Home Manager Apps の Orca.app を固定版で上書きし、自動更新を巻き戻していた。
+  home.activation.installOrca = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    run ${installOrcaApp} /Applications || echo "warning: installOrca が失敗したが続行する" >&2
+  '';
 }

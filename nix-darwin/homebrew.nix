@@ -136,6 +136,9 @@
       # 本体の cmd-eikana cask は上流（iMasanari 版 2.2.3）が Gatekeeper を通らず
       # 2026-09 に無効化されているので使えない。
       "dominion525/tap/cmd-eikana"
+
+      # Orca（stablyai/orca）は cask が無いので、home-manager/orca.nix の
+      # アクティベーションが未インストール時だけ公式 DMG から /Applications に入れる。
     ];
   };
 }
