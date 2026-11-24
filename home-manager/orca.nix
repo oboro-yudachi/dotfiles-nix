@@ -9,6 +9,8 @@ let
     dest="''${1:-/Applications}"
     app="$dest/Orca.app"
     url="https://github.com/stablyai/orca/releases/latest/download/orca-macos-arm64.dmg"
+    # 版を固定しない代わりに署名者を固定する（Developer ID: Lovecast LLC）
+    requirement='anchor apple generic and certificate leaf[subject.OU] = "6CX3WHS9HZ"'
 
     warn() { echo "warning: installOrca: $*" >&2; }
 
@@ -29,7 +31,7 @@ let
     trap cleanup EXIT
 
     echo "Orca.app が $dest に無いので最新の公式 DMG から入れる"
-    if ! /usr/bin/curl -fsSL --retry 2 -o "$tmp/orca.dmg" "$url"; then
+    if ! /usr/bin/curl -fsSL --retry 2 --connect-timeout 30 --max-time 900 -o "$tmp/orca.dmg" "$url"; then
       warn "DMG のダウンロードに失敗した（''${url}）。Orca のインストールを飛ばす"
       exit 0
     fi
@@ -52,8 +54,8 @@ let
       exit 0
     fi
 
-    if ! /usr/bin/codesign --verify --deep --strict "$app"; then
-      warn "$app の署名検証に失敗したので消す"
+    if ! /usr/bin/codesign --verify --deep --strict -R="$requirement" "$app"; then
+      warn "$app の署名検証（team ID 6CX3WHS9HZ）に失敗したので消す"
       rm -rf "$app"
       exit 0
     fi
