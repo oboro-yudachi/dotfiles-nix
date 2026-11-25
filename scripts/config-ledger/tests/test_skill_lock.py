@@ -29,11 +29,23 @@ class SkillLockTests(unittest.TestCase):
             skill.unlink()
             differences = []
             drift.check_skill_lock('code-review-mp', entry, root, differences)
-            self.assertTrue(differences)
+            self.assertEqual(differences, [f'skill lock: missing {skill}'])
             folder.rmdir()
             differences = []
             drift.check_skill_lock('code-review-mp', entry, root, differences)
             self.assertEqual(differences, ['skill lock: missing installed folder code-review-mp (skillName code-review)'])
+
+    def test_unlisted_rename_is_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            folder = root / 'foo-renamed'
+            folder.mkdir()
+            (folder / 'SKILL.md').write_text('---\nname: foo-renamed\n---\n')
+            differences = []
+            drift.check_skill_lock('foo-renamed', {'skillName': 'foo'}, root, differences)
+            self.assertEqual(differences, [
+                'skill lock: foo-renamed installed under folder foo-renamed, skillName is foo'
+            ])
 
 
 if __name__ == '__main__':

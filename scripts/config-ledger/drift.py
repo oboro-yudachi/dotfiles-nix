@@ -15,6 +15,7 @@ HOME = Path.home()
 STATE = HOME / '.local/state/config-ledger'
 PSTACK = HOME / 'repo/02_oss/pstack-codex/pstack'
 OBORO = HOME / 'repo/01_dev/oboro-skills'
+INTENDED_RENAMES = {'code-review-mp': 'code-review'}
 
 
 def git(*args):
@@ -51,6 +52,9 @@ def check_skill_lock(folder, entry, root, differences):
     if not installed.is_dir():
         differences.append(f'skill lock: missing installed folder {folder} (skillName {name})')
     elif name != folder:
+        if INTENDED_RENAMES.get(folder) != name:
+            differences.append(f'skill lock: {folder} installed under folder {folder}, skillName is {name}')
+            return
         skill = installed / 'SKILL.md'
         if not skill.is_file():
             differences.append(f'skill lock: missing {skill}')
