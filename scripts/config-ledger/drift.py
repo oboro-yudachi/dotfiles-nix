@@ -6,6 +6,7 @@ import io
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tarfile
@@ -44,6 +45,25 @@ def compare(label, expected, installed, differences):
             differences.append(f'{label}: changed {name}')
 
 
+def check_skill_lock(folder, entry, root, differences):
+    name = entry.get('skillName', folder)
+    installed = root / folder
+    if not installed.is_dir():
+        differences.append(f'skill lock: missing installed folder {folder} (skillName {name})')
+    elif name != folder:
+        skill = installed / 'SKILL.md'
+        if not skill.is_file():
+            differences.append(f'skill lock: missing {skill}')
+            return
+        text = skill.read_text(encoding='utf-8')
+        frontmatter = re.match(r'\A---\s*\n(.*?)\n---\s*(?:\n|$)', text, re.DOTALL)
+        match = re.search(r'^name:\s*[\'"]?([\w-]+)[\'"]?\s*$', frontmatter.group(1), re.MULTILINE) if frontmatter else None
+        if not match:
+            differences.append(f'skill lock: {folder} has no valid installed name')
+        elif match.group(1) != folder:
+            differences.append(f'skill lock: {folder} has installed name {match.group(1)}')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--offline', action='store_true', help='use the last fetched default branch')
@@ -59,7 +79,6 @@ def main():
             errors.append(f'{name}: check failed: {detail.replace(chr(10), " ")}')
 
     ledger = json.loads((STATE / 'ledger.json').read_text(encoding='utf-8'))
-    rows = ledger['rows']
 
     def pstack():
         version = json.loads((PSTACK / '.codex-plugin/plugin.json').read_text())['version']
@@ -103,15 +122,8 @@ def main():
 
     def skills():
         lock = json.loads((HOME / '.agents/.skill-lock.json').read_text())['skills']
-        installed = {r['name'] for r in rows if r['kind'] == 'skill' and
-                     any(Path(i['location']).parent == HOME / '.agents/skills' and
-                         Path(i['location']).is_dir() for i in r['installed'] if i.get('location'))}
         for folder, entry in sorted(lock.items()):
-            name = entry.get('skillName', folder)
-            if folder not in installed and not (HOME / '.agents/skills' / folder).is_dir():
-                differences.append(f'skill lock: missing installed folder {folder} (skillName {name})')
-            elif name != folder:
-                differences.append(f'skill lock: {folder} installed under folder {folder}, skillName is {name}')
+            check_skill_lock(folder, entry, HOME / '.agents/skills', differences)
         root = HOME / '.claude/skills'
         for path in sorted(root.rglob('*')):
             if path.is_symlink() and not path.exists():
