@@ -28,7 +28,7 @@ sudo darwin-rebuild switch --flake ~/repo/nix
 ## Context
 
 ### なぜやるか
-この端末の作業環境は、`~/dev/org/roam/20260710-work-environment.org` に書かれている通り「ターミナルツール10個を使いこなす」「Doom Emacs の設定を config.org 1本に集約する」という方向で独自進化してきた。しかしその実体は手続き的で再現不可能な状態にある。
+この端末の作業環境は、「ターミナルツール10個を使いこなす」「Doom Emacs の設定を config.org 1本に集約する」という方向で独自進化してきた。しかしその実体は手続き的で再現不可能な状態にある。
 
 調査で判明した現状の問題：
 
@@ -1083,9 +1083,9 @@ doom doctor                          # 新規のエラーが出ていないこ�
 - Emacs で `~/.doom.d/config.org` を開いて編集・保存 → `init.el` / `config.el` / `packages.el` が再生成される
 - `cd ~/repo/nix && git status` で生成物の差分が見える
 - `~/.doom.d` が `~/repo/nix/home-manager/doom.d` への symlink になっている（`ls -la ~/.doom.d`）
-- org-roam が `~/dev/org/` を認識し、`~/.emacs.d/.local/cache/org-roam.db` が残っている（全ノード再スキャンが走っていない）
+- org-roam が `~/repo/05_org/` を認識し、`~/.emacs.d/.local/cache/org-roam.db` が残っている（全ノード再スキャンが走っていない）
 - vterm と claude-code-ide が起動する
-- `~/dev/org/roam/` のノートから `AUTO_EXPORT`（pandoc 経由）が動く
+- `~/repo/05_org/roam/` のノートから `AUTO_EXPORT`（pandoc 経由）が動く
 
 ロールバック・復元は次章にまとめた。
 
@@ -1259,7 +1259,7 @@ sudo darwin-uninstaller           # nix-darwin を先に外す
   追加コンポーネントの入れ直しとバージョン変更が発生するため見送り（手動管理を継続）。
 - **`org-roam-db-location` が未指定**: Doom デフォルトの `~/.emacs.d/.local/cache/org-roam.db` に置かれている。`$EMACSDIR` を将来動かすと DB が消えたように見えて全ノード再スキャンになるので、`~/.local/share/org-roam/org-roam.db` 等の安定パスを config.org で明示しておくとよい
 - **`doom env`（`.local/env`）にセッション固有値が焼き込まれている**（`CMUX_SURFACE_ID` 等）。再現性がないので、必要な環境変数は config.org 側で `setenv` するのが筋
-- **`~/dev/org/` は別リポジトリ**（`oboro-yudachi/org`）。可変データなので nix 管理下に置かない。config.org 側のパス指定だけを宣言化する
+- **`~/repo/05_org/` は別リポジトリ**。可変データなので nix 管理下に置かない。config.org 側のパス指定だけを宣言化する
 - **`~/bin/rspec.sh`** は Raycast Script Command で myapp のパスをハードコード。Raycast 側の管理領域として管理外
 - `.npm`（1.0GB）/ `.yarn`（504MB）/ `.gem`（63MB）のキャッシュ肥大 — 掃除の余地
 - **⚠️ myapp の `ruby-lsp-rails` が `mysql2` 読み込みで落ちることがある**（2026-08-04）:
